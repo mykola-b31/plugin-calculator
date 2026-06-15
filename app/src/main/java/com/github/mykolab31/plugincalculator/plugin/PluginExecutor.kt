@@ -25,29 +25,6 @@ class PluginExecutor {
     }
 
     /**
-     * Create an isolated Lua-environment without access
-     * to the file system, OS, and Java reflection
-     */
-    private fun createSandbox(): Globals {
-        val globals = Globals()
-        globals.load(BaseLib())
-        globals.load(PackageLib())
-        globals.load(TableLib())
-        globals.load(StringLib())
-        globals.load(JseMathLib())
-
-        LuaC.install(globals)
-
-        globals.set("load", LuaValue.NIL)
-        globals.set("loadfile", LuaValue.NIL)
-        globals.set("dofile", LuaValue.NIL)
-        globals.set("require", LuaValue.NIL)
-        globals.set("collectgarbage", LuaValue.NIL)
-
-        return globals
-    }
-
-    /**
      * Execute the execute(operation, args) function in the plugin script
      *
      * @param script text of the plugin Lua file
@@ -73,7 +50,7 @@ class PluginExecutor {
 
     fun runScript(script: String, operation: String, args: List<Double>): PluginExecutionResult {
         return try {
-            val globals = createSandbox()
+            val globals = LuaSandbox.create()
             globals.load(script, "plugin").call()
 
             val executeFunc = globals.get("execute")
