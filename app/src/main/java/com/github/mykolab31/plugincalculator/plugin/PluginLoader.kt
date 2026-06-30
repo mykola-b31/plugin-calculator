@@ -10,6 +10,7 @@ import java.util.zip.ZipInputStream
 sealed class PluginLoadResult {
     data class Success(val plugin: Plugin) : PluginLoadResult()
     data class Error(val message: String) : PluginLoadResult()
+    data class AlreadyExists(val plugin: Plugin, val existingVersion: String) : PluginLoadResult()
 }
 
 class PluginLoader (
@@ -27,7 +28,7 @@ class PluginLoader (
      * Loads and installs a .calcpkg file from the given Uri.
      * Extracts the archive, validates contents, and stores the plugin locally.
      */
-    fun load(uri: Uri): PluginLoadResult {
+    fun load(uri: Uri, overwrite: Boolean = false): PluginLoadResult {
         val extracted = try {
             extractArchive(uri)
         } catch (e: IOException) {
@@ -55,6 +56,13 @@ class PluginLoader (
 
         val plugin = (validationResult as ValidationResult.Valid).plugin
 
+        if (!overwrite) {
+            val existingVersion = getInstalledVersion(plugin.id)
+            if (existingVersion != null) {
+                return PluginLoadResult.AlreadyExists(plugin, existingVersion)
+            }
+        }
+
         return try {
             savePlugin(plugin.id, extracted)
             PluginLoadResult.Success(plugin)
@@ -75,14 +83,18 @@ class PluginLoader (
                 var entry = zip.nextEntry
                 while (entry != null) {
                     if (!entry.isDirectory) {
-                        val bytes = zip.readBytes()
-                        if (bytes.size > MAX_ENTRY_SIZE_BYTES) {
+                        val entryName = entry.name
+                        if (entryName.contains("..") || entryName.startsWith("/")) {
+                            throw SecurityException("Unsafe entry path detected: $entryName")
+                        }
+
+                        val content = zip.readNBytes((MAX_ENTRY_SIZE_BYTES + 1).toInt())
+                        if (content.size > MAX_ENTRY_SIZE_BYTES) {
                             throw SecurityException(
                                 "Entry '${entry.name}' exceeds maximum allowed size"
                             )
                         }
-                        val content = zip.readBytes().toString(Charsets.UTF_8)
-                        entries[entry.name] = content
+                        entries[entryName] = content.toString(Charsets.UTF_8)
                     }
                     zip.closeEntry()
                     entry = zip.nextEntry
@@ -125,5 +137,14 @@ class PluginLoader (
     fun uninstall(pluginId: String): Boolean {
         val pluginDir = File(context.filesDir, "$PLUGINS_DIR/$pluginId")
         return pluginDir.deleteRecursively()
+    }
+
+    private fun getInstalledVersion(pluginId: String): String? {
+        val manifestFile = File(context.filesDir, "$PLUGINS_DIR/$pluginId/$MANIFEST_FILENAME")
+        if (!manifestFile.exists()) return null
+
+        val manifestJson = manifestFile.readText()
+        val result = ManifestParser().parse(manifestJson)
+        return (result as? ManifestParseResult.Success)?.plugin?.version
     }
 }
