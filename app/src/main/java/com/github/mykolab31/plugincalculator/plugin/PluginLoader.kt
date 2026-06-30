@@ -3,6 +3,7 @@ package com.github.mykolab31.plugincalculator.plugin
 import android.content.Context
 import android.net.Uri
 import com.github.mykolab31.plugincalculator.data.model.Plugin
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.IOException
 import java.util.zip.ZipInputStream
@@ -88,13 +89,23 @@ class PluginLoader (
                             throw SecurityException("Unsafe entry path detected: $entryName")
                         }
 
-                        val content = zip.readNBytes((MAX_ENTRY_SIZE_BYTES + 1).toInt())
-                        if (content.size > MAX_ENTRY_SIZE_BYTES) {
-                            throw SecurityException(
-                                "Entry '${entry.name}' exceeds maximum allowed size"
-                            )
+                        val outputStream = ByteArrayOutputStream()
+                        val buffer = ByteArray(8192)
+                        var totalBytes = 0L
+                        var bytesRead = zip.read(buffer)
+
+                        while (bytesRead != -1) {
+                            totalBytes += bytesRead
+                            if (totalBytes > MAX_ENTRY_SIZE_BYTES) {
+                                throw SecurityException(
+                                    "Entry '${entry.name}' exceeds maximum allowed size"
+                                )
+                            }
+                            outputStream.write(buffer, 0, bytesRead)
+                            bytesRead = zip.read(buffer)
                         }
-                        entries[entryName] = content.toString(Charsets.UTF_8)
+
+                        entries[entryName] = outputStream.toString(Charsets.UTF_8.name())
                     }
                     zip.closeEntry()
                     entry = zip.nextEntry
@@ -115,7 +126,12 @@ class PluginLoader (
         pluginDir.mkdirs()
 
         files.forEach { (name, content) ->
-            File(pluginDir, name).writeText(content)
+            val outputFile = File(pluginDir, name)
+            if (!outputFile.canonicalPath.startsWith(pluginDir.canonicalPath)) {
+                throw SecurityException("Entry path escapes plugin directory: $name")
+            }
+            outputFile.parentFile?.mkdirs()
+            outputFile.writeText(content)
         }
     }
 
