@@ -16,9 +16,9 @@ import java.io.File
 
 class PluginRepositoryImpl(
     private val context: Context,
-    private val loader: PluginLoader = PluginLoader(context),
-    private val executor: PluginExecutor = PluginExecutor()
-    ) : PluginRepository {
+    private val loader: PluginLoader,
+    private val executor: PluginExecutor
+) : PluginRepository {
 
     companion object {
         private const val PLUGIN_DIR = "plugins"
