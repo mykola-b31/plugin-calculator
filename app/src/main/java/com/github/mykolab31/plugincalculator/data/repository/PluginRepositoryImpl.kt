@@ -10,6 +10,8 @@ import com.github.mykolab31.plugincalculator.plugin.PluginExecutionResult
 import com.github.mykolab31.plugincalculator.plugin.PluginExecutor
 import com.github.mykolab31.plugincalculator.plugin.PluginLoadResult
 import com.github.mykolab31.plugincalculator.plugin.PluginLoader
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.File
 
 class PluginRepositoryImpl(
@@ -28,11 +30,11 @@ class PluginRepositoryImpl(
         context.getSharedPreferences(ENABLED_PREFS, Context.MODE_PRIVATE)
     }
 
-    override fun getInstalledPlugins(): List<Plugin> {
+    override suspend fun getInstalledPlugins(): List<Plugin> = withContext(Dispatchers.IO) {
         val pluginDir = File(context.filesDir, PLUGIN_DIR)
-        if (!pluginDir.exists()) return emptyList()
+        if (!pluginDir.exists()) return@withContext emptyList()
 
-        return pluginDir.listFiles()
+        pluginDir.listFiles()
             ?.filter { it.isDirectory }
             ?.mapNotNull { dir ->
                 val manifestFile = File(dir, MANIFEST_FILENAME)
@@ -48,31 +50,31 @@ class PluginRepositoryImpl(
             ?: emptyList()
     }
 
-    override fun installPlugin(
+    override suspend fun installPlugin(
         uri: Uri,
         overwrite: Boolean
-    ): PluginLoadResult {
-        return loader.load(uri, overwrite)
+    ): PluginLoadResult = withContext(Dispatchers.IO) {
+        loader.load(uri, overwrite)
     }
 
-    override fun uninstallPlugin(pluginId: String): Boolean {
+    override suspend fun uninstallPlugin(pluginId: String): Boolean = withContext(Dispatchers.IO) {
         prefs.edit().remove(pluginId).apply()
-        return loader.uninstall(pluginId)
+        loader.uninstall(pluginId)
     }
 
     override fun setPluginEnabled(pluginId: String, enabled: Boolean) {
         prefs.edit().putBoolean(pluginId, enabled).apply()
     }
 
-    override fun executeOperation(
+    override suspend fun executeOperation(
         plugin: Plugin,
         operationId: String,
         args: List<Double>
-    ): CalculationResult {
+    ): CalculationResult = withContext(Dispatchers.IO) {
         val script = loader.readScript(plugin)
-            ?: return CalculationResult.Err("Script not found for plugin '${plugin.id}'")
+            ?: return@withContext CalculationResult.Err("Script not found for plugin '${plugin.id}'")
 
-        return when (val result = executor.execute(script, operationId, args)) {
+        when (val result = executor.execute(script, operationId, args)) {
             is PluginExecutionResult.Success -> result.result
             is PluginExecutionResult.Error -> CalculationResult.Err(result.message)
         }
