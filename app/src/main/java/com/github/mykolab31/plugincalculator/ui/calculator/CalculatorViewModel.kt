@@ -28,6 +28,7 @@ sealed class CalculatorEvent {
     ) : CalculatorEvent()
     data object EqualsPressed : CalculatorEvent()
     data object ClearPressed : CalculatorEvent()
+    data object BackspacePressed : CalculatorEvent()
     data object DecimalPressed : CalculatorEvent()
     data object NegatePressed : CalculatorEvent()
 }
@@ -40,6 +41,10 @@ sealed class PendingOperation {
 class CalculatorViewModel(
     private val repository: PluginRepository
 ) : ViewModel() {
+
+    companion object {
+        private const val MAX_INPUT_LENGTH = 15
+    }
 
     private val _uiState = MutableStateFlow(CalculatorUiState())
     val uiState: StateFlow<CalculatorUiState> = _uiState.asStateFlow()
@@ -62,6 +67,7 @@ class CalculatorViewModel(
             )
             is CalculatorEvent.EqualsPressed -> handleEquals()
             is CalculatorEvent.ClearPressed -> handleClear()
+            is CalculatorEvent.BackspacePressed -> handleBackspace()
             is CalculatorEvent.DecimalPressed -> handleDecimal()
             is CalculatorEvent.NegatePressed -> handleNegate()
         }
@@ -77,13 +83,15 @@ class CalculatorViewModel(
 
     private fun handleNumber(digit: String) {
         _uiState.update { state ->
-            val currentExpression = if (shouldResetExpression) {
+            if (shouldResetExpression) {
                 shouldResetExpression = false
-                digit
+                state.copy(expression = digit, result = "")
             } else {
-                if (state.expression == "0") digit else state.expression + digit
+                if (state.expression.length >= MAX_INPUT_LENGTH) return@update state
+
+                val currentExpression = if (state.expression == "0") digit else state.expression + digit
+                state.copy(expression = currentExpression)
             }
-            state.copy(expression = currentExpression)
         }
     }
 
@@ -169,6 +177,17 @@ class CalculatorViewModel(
         _uiState.update { CalculatorUiState(plugins = it.plugins) }
     }
 
+    private fun handleBackspace() {
+        _uiState.update { state ->
+            if (shouldResetExpression) return@update state
+
+            val newExpr = state.expression.dropLast(1)
+            val finalExpr = if (newExpr.isEmpty() || newExpr == "-") "0" else newExpr
+
+            state.copy(expression = finalExpr)
+        }
+    }
+
     private fun handlePluginOperation(plugin: Plugin, operationId: String) {
         val operation = plugin.operations.find { it.id == operationId } ?: return
         val current = _uiState.value.expression.toDoubleOrNull() ?: return
@@ -233,7 +252,9 @@ class CalculatorViewModel(
     }
 
     private fun formatResult(value: Double): String {
-        return if (value % 1.0 == 0.0 && !value.isNaN() && !value.isInfinite()) {
+        if (value.isNaN() || value.isInfinite()) return "Error"
+
+        return if (value % 1.0 == 0.0) {
             value.toInt().toString()
         } else {
             value.toString()
