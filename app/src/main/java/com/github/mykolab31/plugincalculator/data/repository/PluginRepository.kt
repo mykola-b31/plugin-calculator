@@ -25,4 +25,6 @@ interface PluginRepository {
         operationId: String,
         args: List<Double>
     ): CalculationResult
+
+    suspend fun getPluginById(pluginId: String): Plugin?
 }
