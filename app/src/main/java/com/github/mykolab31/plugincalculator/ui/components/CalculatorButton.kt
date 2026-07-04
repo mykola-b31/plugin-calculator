@@ -34,14 +34,14 @@ fun CalculatorButton(
 ) {
     val backgroundColor = when (type) {
         ButtonType.NUMBER -> MaterialTheme.colorScheme.surfaceVariant
-        ButtonType.OPERATION -> MaterialTheme.colorScheme.secondaryContainer
+        ButtonType.OPERATION -> MaterialTheme.colorScheme.primaryContainer
         ButtonType.ACTION -> MaterialTheme.colorScheme.errorContainer
         ButtonType.PLUGIN -> MaterialTheme.colorScheme.tertiaryContainer
     }
 
     val textColor = when (type) {
         ButtonType.NUMBER -> MaterialTheme.colorScheme.onSurfaceVariant
-        ButtonType.OPERATION -> MaterialTheme.colorScheme.onSecondaryContainer
+        ButtonType.OPERATION -> MaterialTheme.colorScheme.onPrimaryContainer
         ButtonType.ACTION -> MaterialTheme.colorScheme.onErrorContainer
         ButtonType.PLUGIN -> MaterialTheme.colorScheme.onTertiaryContainer
     }

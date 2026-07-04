@@ -15,7 +15,7 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun IslandCard(
     modifier: Modifier = Modifier,
-    color: Color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.9f),
+    color: Color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.9f),
     elevation: Dp = 6.dp,
     contentPadding: Dp = 16.dp,
     content: @Composable BoxScope.() -> Unit
