@@ -1,5 +1,7 @@
 package com.github.mykolab31.plugincalculator.ui.calculator
 
+import android.content.res.Configuration
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -20,6 +22,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -28,6 +32,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -39,7 +44,7 @@ import com.github.mykolab31.plugincalculator.ui.components.IslandCard
 @Composable
 fun CalculatorScreen(
     repository: PluginRepository,
-    onNavigateToPlugins : () -> Unit,
+    onNavigateToPlugins: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val viewModel: CalculatorViewModel = viewModel(
@@ -47,6 +52,21 @@ fun CalculatorScreen(
     )
     val uiState by viewModel.uiState.collectAsState()
 
+    CalculatorScreenContent(
+        uiState = uiState,
+        onEvent = { event -> viewModel.onEvent(event) },
+        onNavigateToPlugins = onNavigateToPlugins,
+        modifier = modifier
+    )
+}
+
+@Composable
+fun CalculatorScreenContent(
+    uiState: CalculatorUiState,
+    onEvent: (CalculatorEvent) -> Unit,
+    onNavigateToPlugins: () -> Unit,
+    modifier: Modifier = Modifier
+) {
     Surface(
         modifier = modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background
@@ -77,7 +97,7 @@ fun CalculatorScreen(
                     IconButton(onClick = onNavigateToPlugins) {
                         Icon(
                             imageVector = Icons.Default.Settings,
-                            contentDescription = "Plugin management",
+                            contentDescription = "Керування плагінами",
                             tint = MaterialTheme.colorScheme.primary
                         )
                     }
@@ -92,7 +112,7 @@ fun CalculatorScreen(
                 contentPadding = 24.dp
             ) {
                 Column(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxSize(),
                     verticalArrangement = Arrangement.Bottom,
                     horizontalAlignment = Alignment.End
                 ) {
@@ -136,7 +156,7 @@ fun CalculatorScreen(
                                     type = ButtonType.PLUGIN,
                                     isWide = true,
                                     onClick = {
-                                        viewModel.onEvent(
+                                        onEvent(
                                             CalculatorEvent.PluginOperationPressed(
                                                 plugin,
                                                 operation.id
@@ -155,7 +175,7 @@ fun CalculatorScreen(
 
             // Main keyboard
             IslandCard(
-                modifier= Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth(),
                 contentPadding = 16.dp
             ) {
                 Column(
@@ -168,25 +188,25 @@ fun CalculatorScreen(
                         CalculatorButton(
                             label = "AC",
                             type = ButtonType.ACTION,
-                            onClick = { viewModel.onEvent(CalculatorEvent.ClearPressed) },
+                            onClick = { onEvent(CalculatorEvent.ClearPressed) },
                             modifier = Modifier.weight(1f)
                         )
                         CalculatorButton(
                             label = "⌫",
                             type = ButtonType.ACTION,
-                            onClick = { viewModel.onEvent(CalculatorEvent.BackspacePressed) },
+                            onClick = { onEvent(CalculatorEvent.BackspacePressed) },
                             modifier = Modifier.weight(1f)
                         )
                         CalculatorButton(
                             label = "+/-",
                             type = ButtonType.OPERATION,
-                            onClick = { viewModel.onEvent(CalculatorEvent.NegatePressed) },
+                            onClick = { onEvent(CalculatorEvent.NegatePressed) },
                             modifier = Modifier.weight(1f)
                         )
                         CalculatorButton(
                             label = "÷",
                             type = ButtonType.OPERATION,
-                            onClick = { viewModel.onEvent(CalculatorEvent.OperationPressed("/")) },
+                            onClick = { onEvent(CalculatorEvent.OperationPressed("/")) },
                             modifier = Modifier.weight(1f)
                         )
                     }
@@ -197,25 +217,25 @@ fun CalculatorScreen(
                         CalculatorButton(
                             label = "7",
                             type = ButtonType.NUMBER,
-                            onClick = { viewModel.onEvent(CalculatorEvent.NumberPressed("7")) },
+                            onClick = { onEvent(CalculatorEvent.NumberPressed("7")) },
                             modifier = Modifier.weight(1f)
                         )
                         CalculatorButton(
                             label = "8",
                             type = ButtonType.NUMBER,
-                            onClick = { viewModel.onEvent(CalculatorEvent.NumberPressed("8")) },
+                            onClick = { onEvent(CalculatorEvent.NumberPressed("8")) },
                             modifier = Modifier.weight(1f)
                         )
                         CalculatorButton(
                             label = "9",
                             type = ButtonType.NUMBER,
-                            onClick = { viewModel.onEvent(CalculatorEvent.NumberPressed("9")) },
+                            onClick = { onEvent(CalculatorEvent.NumberPressed("9")) },
                             modifier = Modifier.weight(1f)
                         )
                         CalculatorButton(
                             label = "×",
                             type = ButtonType.OPERATION,
-                            onClick = { viewModel.onEvent(CalculatorEvent.OperationPressed("*")) },
+                            onClick = { onEvent(CalculatorEvent.OperationPressed("*")) },
                             modifier = Modifier.weight(1f)
                         )
                     }
@@ -226,25 +246,25 @@ fun CalculatorScreen(
                         CalculatorButton(
                             label = "4",
                             type = ButtonType.NUMBER,
-                            onClick = { viewModel.onEvent(CalculatorEvent.NumberPressed("4")) },
+                            onClick = { onEvent(CalculatorEvent.NumberPressed("4")) },
                             modifier = Modifier.weight(1f)
                         )
                         CalculatorButton(
                             label = "5",
                             type = ButtonType.NUMBER,
-                            onClick = { viewModel.onEvent(CalculatorEvent.NumberPressed("5")) },
+                            onClick = { onEvent(CalculatorEvent.NumberPressed("5")) },
                             modifier = Modifier.weight(1f)
                         )
                         CalculatorButton(
                             label = "6",
                             type = ButtonType.NUMBER,
-                            onClick = { viewModel.onEvent(CalculatorEvent.NumberPressed("6")) },
+                            onClick = { onEvent(CalculatorEvent.NumberPressed("6")) },
                             modifier = Modifier.weight(1f)
                         )
                         CalculatorButton(
                             label = "-",
                             type = ButtonType.OPERATION,
-                            onClick = { viewModel.onEvent(CalculatorEvent.OperationPressed("-")) },
+                            onClick = { onEvent(CalculatorEvent.OperationPressed("-")) },
                             modifier = Modifier.weight(1f)
                         )
                     }
@@ -255,25 +275,25 @@ fun CalculatorScreen(
                         CalculatorButton(
                             label = "1",
                             type = ButtonType.NUMBER,
-                            onClick = { viewModel.onEvent(CalculatorEvent.NumberPressed("1")) },
+                            onClick = { onEvent(CalculatorEvent.NumberPressed("1"))},
                             modifier = Modifier.weight(1f)
                         )
                         CalculatorButton(
                             label = "2",
                             type = ButtonType.NUMBER,
-                            onClick = { viewModel.onEvent(CalculatorEvent.NumberPressed("2")) },
+                            onClick = { onEvent(CalculatorEvent.NumberPressed("2")) },
                             modifier = Modifier.weight(1f)
                         )
                         CalculatorButton(
                             label = "3",
                             type = ButtonType.NUMBER,
-                            onClick = { viewModel.onEvent(CalculatorEvent.NumberPressed("3")) },
+                            onClick = { onEvent(CalculatorEvent.NumberPressed("3")) },
                             modifier = Modifier.weight(1f)
                         )
                         CalculatorButton(
                             label = "+",
                             type = ButtonType.OPERATION,
-                            onClick = { viewModel.onEvent(CalculatorEvent.OperationPressed("+")) },
+                            onClick = { onEvent(CalculatorEvent.OperationPressed("+")) },
                             modifier = Modifier.weight(1f)
                         )
                     }
@@ -285,24 +305,56 @@ fun CalculatorScreen(
                             label = "0",
                             type = ButtonType.NUMBER,
                             isWide = true,
-                            onClick = { viewModel.onEvent(CalculatorEvent.NumberPressed("0")) },
+                            onClick = { onEvent(CalculatorEvent.NumberPressed("0")) },
                             modifier = Modifier.weight(2f).aspectRatio(2f)
                         )
                         CalculatorButton(
                             label = ".",
                             type = ButtonType.NUMBER,
-                            onClick = { viewModel.onEvent(CalculatorEvent.DecimalPressed) },
+                            onClick = { onEvent(CalculatorEvent.DecimalPressed) },
                             modifier = Modifier.weight(1f)
                         )
                         CalculatorButton(
                             label = "=",
                             type = ButtonType.OPERATION,
-                            onClick = { viewModel.onEvent(CalculatorEvent.EqualsPressed) },
+                            onClick = { onEvent(CalculatorEvent.EqualsPressed) },
                             modifier = Modifier.weight(1f)
                         )
                     }
                 }
             }
         }
+    }
+}
+
+@Preview(name = "Light Mode", showBackground = true, showSystemUi = true)
+@Preview(
+    name = "Dark Mode",
+    showBackground = true,
+    showSystemUi = true,
+    uiMode = Configuration.UI_MODE_NIGHT_YES
+)
+@Composable
+fun CalculatorScreenPreview() {
+    val mockState = CalculatorUiState(
+        expression = "1024×2",
+        result = "2048",
+        plugins = emptyList()
+    )
+
+    val useDarkTheme = isSystemInDarkTheme()
+
+    val colors = if (useDarkTheme) {
+        darkColorScheme()
+    } else {
+        lightColorScheme()
+    }
+
+    MaterialTheme(colorScheme = colors) {
+        CalculatorScreenContent(
+            uiState = mockState,
+            onEvent = {},
+            onNavigateToPlugins = {}
+        )
     }
 }
