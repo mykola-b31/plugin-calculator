@@ -1,9 +1,7 @@
 package com.github.mykolab31.plugincalculator.plugin
 
 import com.github.mykolab31.plugincalculator.data.model.Plugin
-import org.luaj.vm2.Globals
 import org.luaj.vm2.LuaError
-import org.luaj.vm2.lib.BaseLib
 
 sealed class ValidationResult {
     data class Valid(val plugin: Plugin) : ValidationResult()

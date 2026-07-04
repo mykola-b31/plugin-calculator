@@ -6,7 +6,6 @@ import com.github.mykolab31.plugincalculator.data.model.PluginOperation
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.decodeFromString
 
 @Serializable
 data class PluginManifest(

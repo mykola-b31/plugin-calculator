@@ -5,16 +5,9 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
 
 import com.github.mykolab31.plugincalculator.data.model.CalculationResult
-import org.luaj.vm2.Globals
 import org.luaj.vm2.LuaError
 import org.luaj.vm2.LuaTable
 import org.luaj.vm2.LuaValue
-import org.luaj.vm2.compiler.LuaC
-import org.luaj.vm2.lib.BaseLib
-import org.luaj.vm2.lib.PackageLib
-import org.luaj.vm2.lib.StringLib
-import org.luaj.vm2.lib.TableLib
-import org.luaj.vm2.lib.jse.JseMathLib
 
 class PluginExecutor {
 
