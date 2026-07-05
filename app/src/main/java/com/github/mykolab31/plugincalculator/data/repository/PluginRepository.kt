@@ -26,7 +26,5 @@ interface PluginRepository {
         args: List<Double>
     ): CalculationResult
 
-    suspend fun getPluginById(pluginId: String): Plugin?
-
     suspend fun refresh()
 }

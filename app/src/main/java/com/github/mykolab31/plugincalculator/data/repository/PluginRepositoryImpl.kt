@@ -104,18 +104,4 @@ class PluginRepositoryImpl(
             is PluginExecutionResult.Error -> CalculationResult.Err(result.message)
         }
     }
-
-    override suspend fun getPluginById(pluginId: String): Plugin? = withContext(Dispatchers.IO) {
-        val pluginDir = File(context.filesDir, "$PLUGINS_DIR/$pluginId")
-        if (!pluginDir.exists() || !pluginDir.isDirectory) return@withContext null
-
-        val manifestFile = File(pluginDir, MANIFEST_FILENAME)
-        if (!manifestFile.exists()) return@withContext null
-
-        val result = ManifestParser().parse(manifestFile.readText())
-        val plugin = (result as? ManifestParseResult.Success)?.plugin ?: return@withContext null
-
-        val isEnabled = prefs.getBoolean(plugin.id, true)
-        plugin.copy(isEnabled = isEnabled)
-    }
 }
