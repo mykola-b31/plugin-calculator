@@ -6,8 +6,11 @@ import androidx.lifecycle.viewModelScope
 import com.github.mykolab31.plugincalculator.data.model.Plugin
 import com.github.mykolab31.plugincalculator.data.repository.PluginRepository
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -23,39 +26,34 @@ class PluginDetailViewModel(
     private val pluginId: String
 ) : ViewModel() {
 
+    private val _isUninstalled = MutableStateFlow(false)
+    private val _error = MutableStateFlow<String?>(null)
+
     private val _uiState = MutableStateFlow(PluginDetailUiState())
-    val uiState: StateFlow<PluginDetailUiState> = _uiState.asStateFlow()
-
-    init {
-        loadPlugin()
-    }
-
-    private fun loadPlugin() {
-        viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
-            val plugin = repository.getPluginById(pluginId)
-
-            if (plugin != null) {
-                _uiState.update { it.copy(plugin = plugin, isLoading = false) }
-            } else {
-                _uiState.update { it.copy(isLoading = false, error = "Plugin not found") }
-            }
-        }
-    }
+    val uiState: StateFlow<PluginDetailUiState> = combine(
+        repository.installedPlugins,
+        _isUninstalled,
+        _error
+    ) { plugins, isUninstalled, error ->
+        val plugin = plugins.find { it.id == pluginId }
+        PluginDetailUiState(
+            plugin = plugin,
+            isLoading = false,
+            error = error ?: if (plugin == null && !isUninstalled) "Plugin not found" else null,
+            isUninstalled = isUninstalled
+        )
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = PluginDetailUiState(isLoading = true)
+    )
 
     fun uninstallPlugin() {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
+            val success = repository.uninstallPlugin(pluginId)
 
-            val isUninstalled = repository.uninstallPlugin(pluginId)
-
-            if (isUninstalled) {
-                _uiState.update { it.copy(isLoading = false, isUninstalled = true) }
-            } else {
-                _uiState.update {
-                    it.copy(isLoading = false, error = "Failed to uninstall plugin")
-                }
-            }
+            if (success) _isUninstalled.value = true
+            else _error.value = "Failed to uninstall plugin"
         }
     }
 

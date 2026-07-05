@@ -46,7 +46,7 @@ class CalculatorViewModel(
         private const val MAX_INPUT_LENGTH = 15
     }
 
-    private val _uiState = MutableStateFlow(CalculatorUiState())
+    private val _uiState = MutableStateFlow(CalculatorUiState(isLoading = false))
     val uiState: StateFlow<CalculatorUiState> = _uiState.asStateFlow()
 
     private var firstOperand: Double? = null
@@ -54,7 +54,11 @@ class CalculatorViewModel(
     private var shouldResetExpression = false
 
     init {
-        loadPlugins()
+        viewModelScope.launch {
+            repository.installedPlugins.collect { plugins ->
+                _uiState.update { it.copy(plugins = plugins.filter { p -> p.isEnabled }, isLoading = false) }
+            }
+        }
     }
 
     fun onEvent(event: CalculatorEvent) {
@@ -70,14 +74,6 @@ class CalculatorViewModel(
             is CalculatorEvent.BackspacePressed -> handleBackspace()
             is CalculatorEvent.DecimalPressed -> handleDecimal()
             is CalculatorEvent.NegatePressed -> handleNegate()
-        }
-    }
-
-    private fun loadPlugins() {
-        viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
-            val plugins = repository.getInstalledPlugins().filter { it.isEnabled }
-            _uiState.update { it.copy(plugins = plugins, isLoading = false) }
         }
     }
 

@@ -4,11 +4,11 @@ import android.net.Uri
 import com.github.mykolab31.plugincalculator.data.model.CalculationResult
 import com.github.mykolab31.plugincalculator.data.model.Plugin
 import com.github.mykolab31.plugincalculator.plugin.PluginLoadResult
+import kotlinx.coroutines.flow.StateFlow
 
 interface PluginRepository {
 
-    /** Returns all installed plugins */
-    suspend fun getInstalledPlugins(): List<Plugin>
+    val installedPlugins: StateFlow<List<Plugin>>
 
     /** Loads and installs a plugin from a .calcpkg file */
     suspend fun installPlugin(uri: Uri, overwrite: Boolean = false): PluginLoadResult
@@ -27,4 +27,6 @@ interface PluginRepository {
     ): CalculationResult
 
     suspend fun getPluginById(pluginId: String): Plugin?
+
+    suspend fun refresh()
 }

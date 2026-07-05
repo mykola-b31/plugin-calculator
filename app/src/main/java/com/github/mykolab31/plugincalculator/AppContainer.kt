@@ -5,6 +5,9 @@ import com.github.mykolab31.plugincalculator.data.repository.PluginRepository
 import com.github.mykolab31.plugincalculator.data.repository.PluginRepositoryImpl
 import com.github.mykolab31.plugincalculator.plugin.PluginExecutor
 import com.github.mykolab31.plugincalculator.plugin.PluginLoader
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 
 /**
  * Manual dependency container
@@ -14,6 +17,8 @@ import com.github.mykolab31.plugincalculator.plugin.PluginLoader
 class AppContainer(context: Context) {
 
     private val appContext = context.applicationContext
+
+    private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     val pluginExecutor: PluginExecutor by lazy {
         PluginExecutor()
@@ -27,7 +32,8 @@ class AppContainer(context: Context) {
         PluginRepositoryImpl(
             context = appContext,
             loader = pluginLoader,
-            executor = pluginExecutor
+            executor = pluginExecutor,
+            externalScope = applicationScope
         )
     }
 }

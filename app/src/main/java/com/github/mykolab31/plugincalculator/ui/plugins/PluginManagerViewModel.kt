@@ -10,6 +10,7 @@ import com.github.mykolab31.plugincalculator.plugin.PluginLoadResult
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -39,11 +40,15 @@ class PluginManagerViewModel(
     private val repository: PluginRepository
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(PluginManagerUiState())
+    private val _uiState = MutableStateFlow(PluginManagerUiState(isLoading = true))
     val uiState: StateFlow<PluginManagerUiState> = _uiState.asStateFlow()
 
     init {
-        loadPlugins()
+        viewModelScope.launch {
+            repository.installedPlugins.collect { plugins ->
+                _uiState.update { it.copy(plugins = plugins, isLoading = false) }
+            }
+        }
     }
 
     fun onEvent(event: PluginManagerEvent) {
@@ -57,24 +62,13 @@ class PluginManagerViewModel(
         }
     }
 
-    private fun loadPlugins() {
-        viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
-            val plugins = repository.getInstalledPlugins()
-            _uiState.update { it.copy(plugins = plugins, isLoading = false) }
-        }
-    }
-
     private fun handleInstall(uri: Uri, overwrite: Boolean) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, installDialog = null) }
 
             when (val result = repository.installPlugin(uri, overwrite)) {
                 is PluginLoadResult.Success -> {
-                    val updatedPlugins = repository.getInstalledPlugins()
-                    _uiState.update {
-                        it.copy(plugins = updatedPlugins, isLoading = false)
-                    }
+                    _uiState.update { it.copy(isLoading = false) }
                 }
                 is PluginLoadResult.AlreadyExists -> {
                     _uiState.update {
@@ -103,33 +97,15 @@ class PluginManagerViewModel(
 
             val isUninstalled = repository.uninstallPlugin(pluginId)
 
-            if (isUninstalled) {
-                val updatedPlugins = repository.getInstalledPlugins()
-                _uiState.update { it.copy(plugins = updatedPlugins, isLoading = false) }
-            } else {
-                _uiState.update {
-                    it.copy(
-                        isLoading = false,
-                        error = "Failed to uninstall plugin. Please try again."
-                    )
-                }
+            _uiState.update {
+                if (isUninstalled) it.copy(isLoading = false)
+                else it.copy(isLoading = false, error = "Failed to uninstall plugin. Please try again.")
             }
-
         }
     }
 
     private fun handleToggleEnabled(pluginId: String, enabled: Boolean) {
-        _uiState.update { state ->
-            state.copy(
-                plugins = state.plugins.map { plugin ->
-                    if (plugin.id == pluginId) plugin.copy(isEnabled = enabled) else plugin
-                }
-            )
-        }
-
-        viewModelScope.launch {
-            repository.setPluginEnabled(pluginId, enabled)
-        }
+        repository.setPluginEnabled(pluginId, enabled)
     }
 
     private fun dismissDialog() {

@@ -10,14 +10,21 @@ import com.github.mykolab31.plugincalculator.plugin.PluginExecutionResult
 import com.github.mykolab31.plugincalculator.plugin.PluginExecutor
 import com.github.mykolab31.plugincalculator.plugin.PluginLoadResult
 import com.github.mykolab31.plugincalculator.plugin.PluginLoader
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 
 class PluginRepositoryImpl(
     private val context: Context,
     private val loader: PluginLoader,
-    private val executor: PluginExecutor
+    private val executor: PluginExecutor,
+    private val externalScope: CoroutineScope
 ) : PluginRepository {
 
     companion object {
@@ -30,7 +37,18 @@ class PluginRepositoryImpl(
         context.getSharedPreferences(ENABLED_PREFS, Context.MODE_PRIVATE)
     }
 
-    override suspend fun getInstalledPlugins(): List<Plugin> = withContext(Dispatchers.IO) {
+    private val _installPlugins = MutableStateFlow<List<Plugin>>(emptyList())
+    override val installedPlugins: StateFlow<List<Plugin>> = _installPlugins.asStateFlow()
+
+    init {
+        externalScope.launch { refresh() }
+    }
+
+    override suspend fun refresh() {
+        _installPlugins.value = readPluginsFromDisc()
+    }
+
+    private suspend fun readPluginsFromDisc(): List<Plugin> = withContext(Dispatchers.IO) {
         val pluginDir = File(context.filesDir, PLUGINS_DIR)
         if (!pluginDir.exists()) return@withContext emptyList()
 
@@ -54,16 +72,23 @@ class PluginRepositoryImpl(
         uri: Uri,
         overwrite: Boolean
     ): PluginLoadResult = withContext(Dispatchers.IO) {
-        loader.load(uri, overwrite)
+        val result = loader.load(uri, overwrite)
+        if (result is PluginLoadResult.Success) refresh()
+        result
     }
 
     override suspend fun uninstallPlugin(pluginId: String): Boolean = withContext(Dispatchers.IO) {
         prefs.edit().remove(pluginId).apply()
-        loader.uninstall(pluginId)
+        val removed = loader.uninstall(pluginId)
+        if (removed) refresh()
+        removed
     }
 
     override fun setPluginEnabled(pluginId: String, enabled: Boolean) {
         prefs.edit().putBoolean(pluginId, enabled).apply()
+        _installPlugins.update { list ->
+            list.map { plugin -> if (plugin.id == pluginId) plugin.copy(isEnabled = enabled) else plugin }
+        }
     }
 
     override suspend fun executeOperation(
