@@ -14,7 +14,8 @@ import kotlinx.coroutines.launch
 data class PluginDetailUiState(
     val plugin: Plugin? = null,
     val isLoading: Boolean = false,
-    val error: String? = null
+    val error: String? = null,
+    val isUninstalled: Boolean = false
 )
 
 class PluginDetailViewModel(
@@ -38,6 +39,22 @@ class PluginDetailViewModel(
                 _uiState.update { it.copy(plugin = plugin, isLoading = false) }
             } else {
                 _uiState.update { it.copy(isLoading = false, error = "Plugin not found") }
+            }
+        }
+    }
+
+    fun uninstallPlugin() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true) }
+
+            val isUninstalled = repository.uninstallPlugin(pluginId)
+
+            if (isUninstalled) {
+                _uiState.update { it.copy(isLoading = false, isUninstalled = true) }
+            } else {
+                _uiState.update {
+                    it.copy(isLoading = false, error = "Failed to uninstall plugin")
+                }
             }
         }
     }
