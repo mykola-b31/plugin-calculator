@@ -215,6 +215,7 @@ fun PluginManagerScreenPreview() {
         Plugin(
             id = "math_advanced",
             name = "Advanced Math",
+            author = "John Doe",
             version = "1.2.0",
             description = "Trigonometry and logarithms",
             category = PluginCategory.TRIGONOMETRY,
@@ -225,6 +226,7 @@ fun PluginManagerScreenPreview() {
         Plugin(
             id = "finance_tools",
             name = "Finance Tools",
+            author = "Community",
             version = "0.9.5",
             description = "Currency and interest calculator",
             category = PluginCategory.OTHER,

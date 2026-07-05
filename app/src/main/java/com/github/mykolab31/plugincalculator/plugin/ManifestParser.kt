@@ -11,12 +11,12 @@ import kotlinx.serialization.json.Json
 data class PluginManifest(
     val id: String,
     val name: String,
+    val author: String = "Unknown",
     val version: String,
     val description: String,
     val category: String,
     val entryFile: String,
     val operations: List<PluginOperationDto>,
-    val author: String = "Unknown",
     val minAppVersion: String = "1.0.0"
 )
 
@@ -64,6 +64,7 @@ class ManifestParser {
         val plugin = Plugin(
             id = manifest.id,
             name = manifest.name,
+            author = manifest.author,
             version = manifest.version,
             description = manifest.description,
             category = category,

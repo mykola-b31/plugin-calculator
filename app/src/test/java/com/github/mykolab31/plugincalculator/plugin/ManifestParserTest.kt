@@ -14,6 +14,7 @@ class ManifestParserTest {
             {
                 "id": "com.example.trigonometry",
                 "name": "Trigonometry",
+                "author": "John Doe",
                 "version": "1.0.0",
                 "description": "Basic trig functions",
                 "category": "trigonometry",
@@ -38,6 +39,7 @@ class ManifestParserTest {
             {
                 "id": "com.example.custom",
                 "name": "Custom",
+                "author": "John Doe",
                 "version": "1.0.0",
                 "description": "Something custom",
                 "category": "QUANTUM_PHYSICS",
@@ -60,6 +62,7 @@ class ManifestParserTest {
             {
                 "id": "com.example.empty",
                 "name": "Empty",
+                "author": "John Doe",
                 "version": "1.0.0",
                 "description": "No operations",
                 "category": "OTHER",

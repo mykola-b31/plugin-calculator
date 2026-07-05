@@ -43,7 +43,7 @@ fun PluginItemCard(
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "v${plugin.version} • ${plugin.category.name}",
+                    text = "v${plugin.version} • ${plugin.author} • ${plugin.category.name}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
