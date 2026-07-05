@@ -81,7 +81,7 @@ class CalculatorViewModel(
         _uiState.update { state ->
             if (shouldResetExpression) {
                 shouldResetExpression = false
-                state.copy(expression = digit, result = "")
+                state.copy(expression = digit)
             } else {
                 if (state.expression.length >= MAX_INPUT_LENGTH) return@update state
 
@@ -123,10 +123,13 @@ class CalculatorViewModel(
             if (op is PendingOperation.BuiltIn) {
                 val intermediate = calculateBuiltIn(firstOperand!!, op.symbol, current)
                 firstOperand = intermediate
-                _uiState.update { it.copy(expression = formatResult(intermediate), result = "") }
+                _uiState.update { it.copy(expression = formatResult(intermediate), result = "${formatResult(intermediate)} $symbol") }
             }
         } else {
             firstOperand = current
+            _uiState.update { state ->
+                state.copy(result = "${formatResult(current)} $symbol")
+            }
         }
 
         pendingOperation = PendingOperation.BuiltIn(symbol)
