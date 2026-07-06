@@ -48,18 +48,6 @@ class PluginExecutorTest {
     }
 
     @Test
-    fun `infinite loop times out`() {
-        val infinitePlugin = """
-            function execute(operation, args)
-                while true do end
-            end
-        """.trimIndent()
-        val result = executor.execute(infinitePlugin, "loop", listOf())
-        assertTrue(result is PluginExecutionResult.Error)
-        assertTrue((result as PluginExecutionResult.Error).message.contains("timed out"))
-    }
-
-    @Test
     fun `sandbox blocks io access`() {
         val maliciousPlugin = """
             function execute(operation, args)
@@ -72,5 +60,34 @@ class PluginExecutorTest {
         val result = executor.execute(maliciousPlugin, "test", listOf())
         val value = (result as PluginExecutionResult.Success).result as CalculationResult.Number
         assertEquals(-1.0, value.value, 0.0001)
+    }
+
+    @Test
+    fun `infinite loop is stopped by time limit`() {
+        val executor = PluginExecutor()
+        val infiniteLoopScript = """
+            function execute(op, args)
+                local x = 0
+                while true do
+                    x = x + 1
+                 end
+                 return x
+            end
+        """.trimIndent()
+
+        val start = System.currentTimeMillis()
+        val result = executor.execute(infiniteLoopScript, "loop", listOf(1.0))
+        val elapsed = System.currentTimeMillis() - start
+
+        assertTrue(result is PluginExecutionResult.Error)
+        assertTrue(
+            "Expected time-limit error, got: ${(result as PluginExecutionResult.Error).message}",
+            result.message.contains("execution time", ignoreCase = true)
+        )
+        assertTrue(
+            "Expected time limit (~2000ms) to trigger, took ${elapsed}ms",
+            elapsed < 3000
+        )
+        println("Time limit triggered after ${elapsed}ms")
     }
 }
