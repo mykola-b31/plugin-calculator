@@ -1,5 +1,6 @@
 package com.github.mykolab31.plugincalculator.plugin
 
+import com.github.mykolab31.plugincalculator.data.model.OperationArity
 import com.github.mykolab31.plugincalculator.data.model.Plugin
 import com.github.mykolab31.plugincalculator.data.model.PluginCategory
 import com.github.mykolab31.plugincalculator.data.model.PluginOperation
@@ -55,6 +56,14 @@ class ManifestParser {
             return ManifestParseResult.Error("Manifest must declare at least one operation")
         }
 
+        val operations = manifest.operations.map { dto ->
+            val arity = OperationArity.fromInputCount(dto.inputs)
+                ?: return ManifestParseResult.Error(
+                    "Operation '${dto.id}' declared inputs=${dto.inputs}, but only unary or binary is supported"
+                )
+            PluginOperation(id = dto.id, label = dto.label, arity = arity)
+        }
+
         val category = try {
             PluginCategory.valueOf(manifest.category.uppercase())
         } catch (e: IllegalArgumentException) {
@@ -69,9 +78,7 @@ class ManifestParser {
             description = manifest.description,
             category = category,
             entryFile = manifest.entryFile,
-            operations = manifest.operations.map {
-                PluginOperation(id = it.id, label = it.label, inputs = it.inputs)
-            }
+            operations = operations
         )
 
         return ManifestParseResult.Success(plugin)

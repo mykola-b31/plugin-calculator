@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.github.mykolab31.plugincalculator.data.model.CalculationResult
+import com.github.mykolab31.plugincalculator.data.model.OperationArity
 import com.github.mykolab31.plugincalculator.data.model.Plugin
 import com.github.mykolab31.plugincalculator.data.repository.PluginRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -191,18 +192,28 @@ class CalculatorViewModel(
         val operation = plugin.operations.find { it.id == operationId } ?: return
         val current = _uiState.value.expression.toDoubleOrNull() ?: return
 
-        if (operation.inputs == 2) {
-            firstOperand = current
-            pendingOperation = PendingOperation.PluginOp(plugin, operationId, operation.label)
-            shouldResetExpression = true
-            return
-        }
+        when (operation.arity) {
+            OperationArity.BINARY -> {
+                firstOperand = current
+                pendingOperation = PendingOperation.PluginOp(plugin, operationId, operation.label)
+                shouldResetExpression = true
+            }
 
-        shouldResetExpression = true
+            OperationArity.UNARY -> {
+                shouldResetExpression = true
+                viewModelScope.launch {
+                    val result = repository.executeOperation(plugin, operationId, listOf(current))
+                    handleCalculationResult(result, operation.label, current)
+                }
+            }
 
-        viewModelScope.launch {
-            val result = repository.executeOperation(plugin, operationId, listOf(current))
-            handleCalculationResult(result, operation.label, current)
+            OperationArity.NULLARY -> {
+                shouldResetExpression = true
+                viewModelScope.launch {
+                    val result = repository.executeOperation(plugin, operationId, emptyList())
+                    handleNullaryResult(result, operation.label)
+                }
+            }
         }
     }
 
@@ -232,6 +243,32 @@ class CalculatorViewModel(
             }
             is CalculationResult.Err -> {
                 shouldResetExpression = true
+                _uiState.update { state ->
+                    state.copy(result = "Error: ${result.message}")
+                }
+            }
+        }
+    }
+
+    private fun handleNullaryResult(result: CalculationResult, operationLabel: String) {
+        when (result) {
+            is CalculationResult.Number -> {
+                _uiState.update { state ->
+                    state.copy(
+                        expression = formatResult(result.value),
+                        result = "$operationLabel = "
+                    )
+                }
+            }
+            is CalculationResult.Matrix -> {
+                _uiState.update { state ->
+                    state.copy(
+                        expression = "[matrix]",
+                        result = formatMatrix(result.rows)
+                    )
+                }
+            }
+            is CalculationResult.Err -> {
                 _uiState.update { state ->
                     state.copy(result = "Error: ${result.message}")
                 }

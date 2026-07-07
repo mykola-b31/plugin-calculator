@@ -1,5 +1,6 @@
 package com.github.mykolab31.plugincalculator.plugin
 
+import com.github.mykolab31.plugincalculator.data.model.OperationArity
 import com.github.mykolab31.plugincalculator.data.model.PluginCategory
 import org.junit.Test
 import org.junit.Assert.*
@@ -93,5 +94,49 @@ class ManifestParserTest {
 
         val result = parser.parse(json)
         assertTrue(result is ManifestParseResult.Error)
+    }
+
+    @Test
+    fun `manifest with invalid inputs count is rejected`() {
+        val manifestJson = """
+            {
+                "id": "test-plugin",
+                "name": "Test",
+                "version": "1.0.0",
+                "description": "Test plugin",
+                "category": "MATH",
+                "entryFile": "main.lua",
+                "operations": [
+                    { "id": "weird", "label": "weird(x,y,z)", "inputs": 3 }
+                ]
+            }
+        """.trimIndent()
+
+        val result = ManifestParser().parse(manifestJson)
+
+        assertTrue(result is ManifestParseResult.Error)
+    }
+
+    @Test
+    fun `manifest with zero inputs is accepted as nullary operation`() {
+        val manifestJson = """
+            {
+                "id": "test-plugin",
+                "name": "Test",
+                "version": "1.0.0",
+                "description": "Test plugin",
+                "category": "MATH",
+                "entryFile": "main.lua",
+                "operations": [
+                    { "id": "pi", "label": "π", "inputs": 0 }
+                ]
+            }
+        """.trimIndent()
+
+        val result = ManifestParser().parse(manifestJson)
+
+        assertTrue(result is ManifestParseResult.Success)
+        val operation = (result as ManifestParseResult.Success).plugin.operations.first()
+        assertEquals(OperationArity.NULLARY, operation.arity)
     }
 }

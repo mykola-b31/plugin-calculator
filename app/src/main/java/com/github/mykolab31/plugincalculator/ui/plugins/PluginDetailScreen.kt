@@ -44,6 +44,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.github.mykolab31.plugincalculator.data.model.OperationArity
 import com.github.mykolab31.plugincalculator.data.model.Plugin
 import com.github.mykolab31.plugincalculator.data.model.PluginCategory
 import com.github.mykolab31.plugincalculator.data.model.PluginOperation
@@ -291,9 +292,9 @@ fun PluginDetailScreenPreview() {
         isEnabled = true,
         entryFile = "scripts/math_advanced.lua",
         operations = listOf(
-            PluginOperation(id = "sin", label = "sin", inputs = 1),
-            PluginOperation(id = "cos", label = "cos", inputs = 1),
-            PluginOperation(id = "log", label = "log", inputs = 1)
+            PluginOperation(id = "sin", label = "sin", arity = OperationArity.UNARY),
+            PluginOperation(id = "cos", label = "cos", arity = OperationArity.UNARY),
+            PluginOperation(id = "log", label = "log", arity = OperationArity.UNARY)
         )
     )
 
