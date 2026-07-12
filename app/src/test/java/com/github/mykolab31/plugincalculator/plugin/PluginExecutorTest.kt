@@ -3,6 +3,7 @@ package com.github.mykolab31.plugincalculator.plugin
 import com.github.mykolab31.plugincalculator.data.model.CalculationResult
 import org.junit.Test
 import org.junit.Assert.*
+import java.math.BigDecimal
 
 class PluginExecutorTest {
 
@@ -25,17 +26,21 @@ class PluginExecutorTest {
         end
     """.trimIndent()
 
+    private fun assertBigDecimalEquals(expected: BigDecimal, actual: BigDecimal) {
+        assertEquals("Expected $expected but was $actual", 0, expected.compareTo(actual))
+    }
+
     @Test
     fun `addition returns correct result`() {
-        val result = executor.execute(arithmeticPlugin, "add", listOf(2.0, 3.0))
+        val result = executor.execute(arithmeticPlugin, "add", listOf(BigDecimal("2"), BigDecimal("3")))
         assertTrue(result is PluginExecutionResult.Success)
         val value = (result as PluginExecutionResult.Success).result as CalculationResult.Number
-        assertEquals(5.0, value.value, 0.0001)
+        assertBigDecimalEquals(BigDecimal.valueOf(5.0), value.value)
     }
 
     @Test
     fun `division by zero returns error`() {
-        val result = executor.execute(arithmeticPlugin, "divide", listOf(10.0, 0.0))
+        val result = executor.execute(arithmeticPlugin, "divide", listOf(BigDecimal("10"), BigDecimal("0")))
         assertTrue(result is PluginExecutionResult.Error)
         assertEquals("Division by zero", (result as PluginExecutionResult.Error).message)
     }
@@ -43,7 +48,7 @@ class PluginExecutorTest {
     @Test
     fun `missing execute function returns error`() {
         val brokenPlugin = "function notExecute() end"
-        val result = executor.execute(brokenPlugin, "add", listOf(1.0, 1.0))
+        val result = executor.execute(brokenPlugin, "add", listOf(BigDecimal.ONE, BigDecimal.ONE))
         assertTrue(result is PluginExecutionResult.Error)
     }
 
@@ -59,7 +64,7 @@ class PluginExecutorTest {
         """.trimIndent()
         val result = executor.execute(maliciousPlugin, "test", listOf())
         val value = (result as PluginExecutionResult.Success).result as CalculationResult.Number
-        assertEquals(-1.0, value.value, 0.0001)
+        assertBigDecimalEquals(BigDecimal.valueOf(-1.0), value.value)
     }
 
     @Test
@@ -76,7 +81,7 @@ class PluginExecutorTest {
         """.trimIndent()
 
         val start = System.currentTimeMillis()
-        val result = executor.execute(infiniteLoopScript, "loop", listOf(1.0))
+        val result = executor.execute(infiniteLoopScript, "loop", emptyList())
         val elapsed = System.currentTimeMillis() - start
 
         assertTrue(result is PluginExecutionResult.Error)

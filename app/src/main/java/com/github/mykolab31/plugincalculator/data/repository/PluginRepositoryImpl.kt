@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.math.BigDecimal
 
 class PluginRepositoryImpl(
     private val context: Context,
@@ -94,7 +95,7 @@ class PluginRepositoryImpl(
     override suspend fun executeOperation(
         plugin: Plugin,
         operationId: String,
-        args: List<Double>
+        args: List<BigDecimal>
     ): CalculationResult = withContext(Dispatchers.IO) {
         val script = loader.readScript(plugin)
             ?: return@withContext CalculationResult.Err("Script not found for plugin '${plugin.id}'")

@@ -12,6 +12,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.math.BigDecimal
+import java.math.RoundingMode
 
 data class CalculatorUiState(
     val expression: String = "",
@@ -51,7 +53,7 @@ class CalculatorViewModel(
     private val _uiState = MutableStateFlow(CalculatorUiState(isLoading = false))
     val uiState: StateFlow<CalculatorUiState> = _uiState.asStateFlow()
 
-    private var firstOperand: Double? = null
+    private var firstOperand: BigDecimal? = null
     private var pendingOperation: PendingOperation? = null
     private var shouldResetExpression = false
 
@@ -107,39 +109,36 @@ class CalculatorViewModel(
 
     private fun handleNegate() {
         _uiState.update { state ->
-            val current = state.expression.toDoubleOrNull() ?: return@update state
-            val negated = if (current % 1.0 == 0.0) {
-                (-current).toInt().toString()
-            } else {
-                (-current).toString()
-            }
+            val expr = state.expression
+            if (expr == "0" || expr.isEmpty()) return@update state
+
+            val negated = if (expr.startsWith("-")) expr.drop(1) else "-$expr"
             state.copy(expression = negated, error = null)
         }
     }
 
     private fun handleOperation(symbol: String) {
-        val current = _uiState.value.expression.toDoubleOrNull() ?: return
+        val current = _uiState.value.expression.toBigDecimalOrNull() ?: return
 
         if (firstOperand != null && pendingOperation != null && !shouldResetExpression) {
             val op = pendingOperation
             if (op is PendingOperation.BuiltIn) {
-                val intermediate = calculateBuiltIn(firstOperand!!, op.symbol, current)
-
-                if (intermediate.isNaN() || intermediate.isInfinite()) {
+                try {
+                    val intermediate = calculateBuiltIn(firstOperand!!, op.symbol, current)
+                    firstOperand = intermediate
+                    _uiState.update {
+                        it.copy(
+                            expression = formatResult(intermediate),
+                            result = "${formatResult(intermediate)} $symbol",
+                            error = null
+                        )
+                    }
+                } catch (_: ArithmeticException) {
                     _uiState.update { it.copy(error = builtInErrorMessage(op.symbol, current)) }
                     firstOperand = null
                     pendingOperation = null
                     shouldResetExpression = true
                     return
-                }
-
-                firstOperand = intermediate
-                _uiState.update {
-                    it.copy(
-                        expression = formatResult(intermediate),
-                        result = "${formatResult(intermediate)} $symbol",
-                        error = null
-                    )
                 }
             }
         } else {
@@ -154,7 +153,7 @@ class CalculatorViewModel(
     }
 
     private fun handleEquals() {
-        val current = _uiState.value.expression.toDoubleOrNull() ?: return
+        val current = _uiState.value.expression.toBigDecimalOrNull() ?: return
         val first = firstOperand ?: return
         val operation = pendingOperation ?: return
 
@@ -173,11 +172,8 @@ class CalculatorViewModel(
                 }
             }
             is PendingOperation.BuiltIn -> {
-                val result = calculateBuiltIn(first, operation.symbol, current)
-
-                if (result.isNaN() || result.isInfinite()) {
-                    _uiState.update { it.copy(error = builtInErrorMessage(operation.symbol, current)) }
-                } else {
+                try {
+                    val result = calculateBuiltIn(first, operation.symbol, current)
                     _uiState.update { state ->
                         state.copy(
                             expression = formatResult(result),
@@ -185,6 +181,8 @@ class CalculatorViewModel(
                             error = null
                         )
                     }
+                } catch (_: ArithmeticException) {
+                    _uiState.update { it.copy(error = builtInErrorMessage(operation.symbol, current)) }
                 }
 
                 firstOperand = null
@@ -216,7 +214,7 @@ class CalculatorViewModel(
 
         when (operation.arity) {
             OperationArity.BINARY -> {
-                val current = _uiState.value.expression.toDoubleOrNull() ?: return
+                val current = _uiState.value.expression.toBigDecimalOrNull() ?: return
                 firstOperand = current
                 pendingOperation = PendingOperation.PluginOp(plugin, operationId, operation.label)
                 shouldResetExpression = true
@@ -224,7 +222,7 @@ class CalculatorViewModel(
             }
 
             OperationArity.UNARY -> {
-                val current = _uiState.value.expression.toDoubleOrNull() ?: return
+                val current = _uiState.value.expression.toBigDecimalOrNull() ?: return
                 shouldResetExpression = true
                 viewModelScope.launch {
                     val result = repository.executeOperation(plugin, operationId, listOf(current))
@@ -245,7 +243,7 @@ class CalculatorViewModel(
     private fun handleCalculationResult(
         result: CalculationResult,
         operationLabel: String,
-        input: Double
+        input: BigDecimal
     ) {
         when (result) {
             is CalculationResult.Number -> {
@@ -306,35 +304,32 @@ class CalculatorViewModel(
     }
 
     // built in operations (+, -, *, /)
-    private fun calculateBuiltIn(a: Double, operation: String, b: Double): Double {
+    private fun calculateBuiltIn(a: BigDecimal, operation: String, b: BigDecimal): BigDecimal {
         return when(operation) {
-            "+" -> a + b
-            "-" -> a - b
-            "*" -> a * b
-            "/" -> if (b != 0.0) a / b else Double.NaN
-            else -> Double.NaN
+            "+" -> a.add(b)
+            "-" -> a.subtract(b)
+            "*" -> a.multiply(b)
+            "/" -> {
+                if (b.compareTo(BigDecimal.ZERO) == 0) throw ArithmeticException("Cannot divide by zero")
+                a.divide(b, 10, RoundingMode.HALF_UP).stripTrailingZeros()
+            }
+            else -> throw IllegalArgumentException("Unknown operation")
         }
     }
 
-    private fun formatResult(value: Double): String {
-        if (value.isNaN() || value.isInfinite()) return "Error"
-
-        return if (value % 1.0 == 0.0) {
-            value.toInt().toString()
-        } else {
-            value.toString()
-        }
+    private fun formatResult(value: BigDecimal): String {
+        return value.stripTrailingZeros().toPlainString()
     }
 
-    private fun builtInErrorMessage(symbol: String, divisor: Double): String {
-        return if (symbol == "/" && divisor == 0.0) {
+    private fun builtInErrorMessage(symbol: String, divisor: BigDecimal): String {
+        return if (symbol == "/" && divisor.compareTo(BigDecimal.ZERO) == 0) {
             "Cannot divide by zero"
         } else {
             "Result is undefined"
         }
     }
 
-    private fun formatMatrix(rows: List<List<Double>>): String {
+    private fun formatMatrix(rows: List<List<BigDecimal>>): String {
         return rows.joinToString(separator = "\n") { row ->
             row.joinToString(separator = "  ") { formatResult(it) }
         }

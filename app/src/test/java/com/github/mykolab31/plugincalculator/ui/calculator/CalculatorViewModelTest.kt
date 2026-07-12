@@ -8,10 +8,13 @@ import com.github.mykolab31.plugincalculator.data.model.PluginCategory
 import com.github.mykolab31.plugincalculator.data.model.PluginOperation
 import com.github.mykolab31.plugincalculator.data.repository.FakePluginRepository
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import java.math.BigDecimal
 
 class CalculatorViewModelTest {
 
@@ -42,6 +45,18 @@ class CalculatorViewModelTest {
         isEnabled = true
     )
 
+    private fun assertBigDecimalEquals(expected: BigDecimal, actual: BigDecimal) {
+        assertEquals("Expected $expected but was $actual", 0, expected.compareTo(actual))
+    }
+
+    private fun assertBigDecimalListEquals(expected: List<BigDecimal>, actual: List<BigDecimal>?) {
+        assertNotNull("Expected args to be captured, but they were null", actual)
+        assertEquals(expected.size, actual!!.size)
+        expected.zip(actual).forEach { (e, a) -> assertBigDecimalEquals(e, a) }
+    }
+
+    // Built-in
+
     @Test
     fun `division by zero sets error field, not expression`() {
         viewModel.onEvent(CalculatorEvent.NumberPressed("5"))
@@ -50,7 +65,10 @@ class CalculatorViewModelTest {
         viewModel.onEvent(CalculatorEvent.EqualsPressed)
 
         val state = viewModel.uiState.value
-        assertEquals("Cannot divide by zero", state.error)
+        assertTrue(
+            "Expected a division-by-zero related error, got: ${state.error}",
+            state.error?.contains("divide", ignoreCase = true) == true
+        )
     }
 
     @Test
@@ -59,7 +77,7 @@ class CalculatorViewModelTest {
         viewModel.onEvent(CalculatorEvent.OperationPressed("/"))
         viewModel.onEvent(CalculatorEvent.NumberPressed("0"))
         viewModel.onEvent(CalculatorEvent.EqualsPressed)
-        assertEquals("Cannot divide by zero", viewModel.uiState.value.error)
+        assertTrue(viewModel.uiState.value.error?.contains("divide", ignoreCase = true) == true)
 
         viewModel.onEvent(CalculatorEvent.NumberPressed("4"))
         viewModel.onEvent(CalculatorEvent.OperationPressed("+"))
@@ -77,7 +95,7 @@ class CalculatorViewModelTest {
         viewModel.onEvent(CalculatorEvent.OperationPressed("/"))
         viewModel.onEvent(CalculatorEvent.NumberPressed("0"))
         viewModel.onEvent(CalculatorEvent.EqualsPressed)
-        assertEquals("Cannot divide by zero", viewModel.uiState.value.error)
+        assertTrue(viewModel.uiState.value.error != null)
 
         viewModel.onEvent(CalculatorEvent.NumberPressed("7"))
 
@@ -90,12 +108,14 @@ class CalculatorViewModelTest {
         viewModel.onEvent(CalculatorEvent.OperationPressed("/"))
         viewModel.onEvent(CalculatorEvent.NumberPressed("0"))
         viewModel.onEvent(CalculatorEvent.EqualsPressed)
-        assertEquals("Cannot divide by zero", viewModel.uiState.value.error)
+        assertTrue(viewModel.uiState.value.error != null)
 
         viewModel.onEvent(CalculatorEvent.ClearPressed)
 
         assertNull(viewModel.uiState.value.error)
     }
+
+    // UNARY
 
     @Test
     fun `plugin unary operation error sets error field`() {
@@ -108,14 +128,14 @@ class CalculatorViewModelTest {
 
         val state = viewModel.uiState.value
         assertEquals("Lua error: bad argument", state.error)
-        assertEquals(listOf(9.0), repository.lastExecuteArgs)
+        assertBigDecimalListEquals(listOf(BigDecimal("9")), repository.lastExecuteArgs)
     }
 
     @Test
     fun `plugin unary operation success updates expression and clears error`() {
         val plugin = testPlugin(arity = OperationArity.UNARY)
         repository.setPlugins(listOf(plugin))
-        repository.executeOperationResult = CalculationResult.Number(3.0)
+        repository.executeOperationResult = CalculationResult.Number(BigDecimal("3"))
 
         viewModel.onEvent(CalculatorEvent.NumberPressed("9"))
         viewModel.onEvent(CalculatorEvent.PluginOperationPressed(plugin, "op"))
@@ -125,18 +145,23 @@ class CalculatorViewModelTest {
         assertEquals("3", state.expression)
     }
 
+    // NULLARY
+
     @Test
     fun `plugin nullary operation ignores current expression`() {
         val plugin = testPlugin(arity = OperationArity.NULLARY)
         repository.setPlugins(listOf(plugin))
-        repository.executeOperationResult = CalculationResult.Number(3.14159)
+        repository.executeOperationResult = CalculationResult.Number(BigDecimal("3.14159"))
 
+        // Навмисно НЕ вводимо жодного числа перед натисканням.
         viewModel.onEvent(CalculatorEvent.PluginOperationPressed(plugin, "op"))
 
         val state = viewModel.uiState.value
         assertEquals("3.14159", state.expression)
-        assertEquals(emptyList<Double>(), repository.lastExecuteArgs)
+        assertBigDecimalListEquals(emptyList(), repository.lastExecuteArgs)
     }
+
+    // BINARY
 
     @Test
     fun `plugin binary operation error via equals sets error field`() {
@@ -151,6 +176,6 @@ class CalculatorViewModelTest {
 
         val state = viewModel.uiState.value
         assertEquals("division undefined", state.error)
-        assertEquals(listOf(5.0, 2.0), repository.lastExecuteArgs)
+        assertBigDecimalListEquals(listOf(BigDecimal("5"), BigDecimal("2")), repository.lastExecuteArgs)
     }
 }

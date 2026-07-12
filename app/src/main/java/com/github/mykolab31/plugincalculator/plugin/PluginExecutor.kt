@@ -8,6 +8,7 @@ import com.github.mykolab31.plugincalculator.data.model.CalculationResult
 import org.luaj.vm2.LuaError
 import org.luaj.vm2.LuaTable
 import org.luaj.vm2.LuaValue
+import java.math.BigDecimal
 
 class PluginExecutor {
 
@@ -25,7 +26,7 @@ class PluginExecutor {
      * @param args list of numeric arguments
      * @return execution result as LuaValue
      */
-    fun execute(script: String, operation: String, args: List<Double>): PluginExecutionResult {
+    fun execute(script: String, operation: String, args: List<BigDecimal>): PluginExecutionResult {
         val future = executorService.submit<PluginExecutionResult> {
             runScript(script, operation, args)
         }
@@ -41,7 +42,7 @@ class PluginExecutor {
     }
 
 
-    fun runScript(script: String, operation: String, args: List<Double>): PluginExecutionResult {
+    fun runScript(script: String, operation: String, args: List<BigDecimal>): PluginExecutionResult {
         return try {
             val globals = LuaSandbox.create()
             globals.load(script, "plugin").call()
@@ -53,7 +54,7 @@ class PluginExecutor {
 
             val luaArgs = LuaTable()
             args.forEachIndexed { index, value ->
-                luaArgs.set(index + 1, LuaValue.valueOf(value))
+                luaArgs.set(index + 1, LuaValue.valueOf(value.toDouble()))
             }
 
             val result = executeFunc.call(LuaValue.valueOf(operation), luaArgs)
@@ -73,7 +74,7 @@ class PluginExecutor {
     private fun convertResult(result: LuaValue): PluginExecutionResult {
         return when {
             result.isnumber() -> PluginExecutionResult.Success(
-                CalculationResult.Number(result.todouble())
+                CalculationResult.Number(BigDecimal.valueOf(result.todouble()))
             )
             result.istable() -> convertTableResult(result.checktable())
             else -> PluginExecutionResult.Error("Unsupported return type from plugin")
@@ -85,10 +86,10 @@ class PluginExecutor {
         return when(type.tojstring()) {
             "matrix" -> {
                 val data = table.get("data").checktable()
-                val rows = mutableListOf<List<Double>>()
+                val rows = mutableListOf<List<BigDecimal>>()
                 for (i in 1..data.length()) {
                     val row = data.get(i).checktable()
-                    val rowValues = (1..row.length()).map { row.get(it).todouble() }
+                    val rowValues = (1..row.length()).map { BigDecimal.valueOf(row.get(it).todouble()) }
                     rows.add(rowValues)
                 }
                 PluginExecutionResult.Success(CalculationResult.Matrix(rows))

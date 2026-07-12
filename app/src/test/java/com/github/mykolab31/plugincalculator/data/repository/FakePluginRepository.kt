@@ -7,6 +7,7 @@ import com.github.mykolab31.plugincalculator.plugin.PluginLoadResult
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import java.math.BigDecimal
 
 class FakePluginRepository(
     initialPlugins: List<Plugin> = emptyList()
@@ -17,7 +18,7 @@ class FakePluginRepository(
 
     var executeOperationResult: CalculationResult = CalculationResult.Err("not stubbed")
 
-    var lastExecuteArgs: List<Double>? = null
+    var lastExecuteArgs: List<BigDecimal>? = null
         private set
 
     fun setPlugins(plugins: List<Plugin>) {
@@ -39,7 +40,7 @@ class FakePluginRepository(
     override suspend fun executeOperation(
         plugin: Plugin,
         operationId: String,
-        args: List<Double>
+        args: List<BigDecimal>
     ): CalculationResult {
         lastExecuteArgs = args
         return executeOperationResult

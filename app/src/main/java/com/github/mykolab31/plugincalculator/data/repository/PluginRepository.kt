@@ -5,6 +5,7 @@ import com.github.mykolab31.plugincalculator.data.model.CalculationResult
 import com.github.mykolab31.plugincalculator.data.model.Plugin
 import com.github.mykolab31.plugincalculator.plugin.PluginLoadResult
 import kotlinx.coroutines.flow.StateFlow
+import java.math.BigDecimal
 
 interface PluginRepository {
 
@@ -23,7 +24,7 @@ interface PluginRepository {
     suspend fun executeOperation(
         plugin: Plugin,
         operationId: String,
-        args: List<Double>
+        args: List<BigDecimal>
     ): CalculationResult
 
     suspend fun refresh()
