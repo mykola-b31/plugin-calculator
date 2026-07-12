@@ -124,6 +124,15 @@ class CalculatorViewModel(
             val op = pendingOperation
             if (op is PendingOperation.BuiltIn) {
                 val intermediate = calculateBuiltIn(firstOperand!!, op.symbol, current)
+
+                if (intermediate.isNaN() || intermediate.isInfinite()) {
+                    _uiState.update { it.copy(error = builtInErrorMessage(op.symbol, current)) }
+                    firstOperand = null
+                    pendingOperation = null
+                    shouldResetExpression = true
+                    return
+                }
+
                 firstOperand = intermediate
                 _uiState.update {
                     it.copy(
@@ -165,13 +174,19 @@ class CalculatorViewModel(
             }
             is PendingOperation.BuiltIn -> {
                 val result = calculateBuiltIn(first, operation.symbol, current)
-                _uiState.update { state ->
-                    state.copy(
-                        expression = formatResult(result),
-                        result = "${formatResult(first)} ${operation.symbol} ${formatResult(current)}",
-                        error = null
-                    )
+
+                if (result.isNaN() || result.isInfinite()) {
+                    _uiState.update { it.copy(error = builtInErrorMessage(operation.symbol, current)) }
+                } else {
+                    _uiState.update { state ->
+                        state.copy(
+                            expression = formatResult(result),
+                            result = "${formatResult(first)} ${operation.symbol} ${formatResult(current)}",
+                            error = null
+                        )
+                    }
                 }
+
                 firstOperand = null
                 pendingOperation = null
             }
@@ -307,6 +322,14 @@ class CalculatorViewModel(
             value.toInt().toString()
         } else {
             value.toString()
+        }
+    }
+
+    private fun builtInErrorMessage(symbol: String, divisor: Double): String {
+        return if (symbol == "/" && divisor == 0.0) {
+            "Cannot divide by zero"
+        } else {
+            "Result is undefined"
         }
     }
 
