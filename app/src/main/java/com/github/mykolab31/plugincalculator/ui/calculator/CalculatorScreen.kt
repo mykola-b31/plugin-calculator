@@ -30,6 +30,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -37,6 +38,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.github.mykolab31.plugincalculator.R
 import com.github.mykolab31.plugincalculator.data.repository.PluginRepository
 import com.github.mykolab31.plugincalculator.ui.components.ButtonType
 import com.github.mykolab31.plugincalculator.ui.components.CalculatorButton
@@ -90,7 +92,7 @@ fun CalculatorScreenContent(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Modular Calc",
+                        text = stringResource(R.string.calculator_title),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary,
@@ -99,7 +101,7 @@ fun CalculatorScreenContent(
                     IconButton(onClick = onNavigateToPlugins) {
                         Icon(
                             imageVector = Icons.Default.Settings,
-                            contentDescription = "Plugin manager",
+                            contentDescription = stringResource(R.string.cd_manage_plugins),
                             tint = MaterialTheme.colorScheme.primary
                         )
                     }

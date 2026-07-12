@@ -36,10 +36,12 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.github.mykolab31.plugincalculator.R
 import com.github.mykolab31.plugincalculator.data.model.Plugin
 import com.github.mykolab31.plugincalculator.data.model.PluginCategory
 import com.github.mykolab31.plugincalculator.data.repository.PluginRepository
@@ -90,12 +92,12 @@ fun PluginManagerScreenContent(
         modifier = modifier.fillMaxSize(),
         topBar = {
             TopAppBar(
-                title = { Text("Plugin Manager") },
+                title = { Text(stringResource(R.string.plugin_manager_title)) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back"
+                            contentDescription = stringResource(R.string.cd_back)
                         )
                     }
                 },
@@ -110,7 +112,7 @@ fun PluginManagerScreenContent(
                 onClick = onInstallClick,
                 containerColor = MaterialTheme.colorScheme.primaryContainer
             ) {
-                Icon(Icons.Default.Add, contentDescription = "Install plugin")
+                Icon(Icons.Default.Add, contentDescription = stringResource(R.string.cd_install_plugin))
             }
         }
     ) { paddingValues ->
@@ -175,18 +177,25 @@ fun PluginManagerScreenContent(
         uiState.installDialog?.let { dialogState ->
             AlertDialog(
                 onDismissRequest = { onEvent(PluginManagerEvent.DismissDialog) },
-                title = { Text("Update plugin?") },
+                title = { Text(stringResource(R.string.plugin_update_dialog_title)) },
                 text = {
-                    Text("The '${dialogState.incomingPlugin.name}' plugin already exists (version ${dialogState.existingVersion}). Want to overwrite it with version ${dialogState.incomingPlugin.version}?")
+                    Text(
+                        stringResource(
+                            R.string.plugin_update_dialog_message,
+                            dialogState.incomingPlugin.name,
+                            dialogState.existingVersion,
+                            dialogState.incomingPlugin.version
+                        )
+                    )
                 },
                 confirmButton = {
                     TextButton(onClick = { onEvent(PluginManagerEvent.InstallConfirmed(dialogState.pendingUri)) }) {
-                        Text("Rewrite")
+                        Text(stringResource(R.string.action_rewrite))
                     }
                 },
                 dismissButton = {
                     TextButton(onClick = { onEvent(PluginManagerEvent.DismissDialog)} ) {
-                        Text("Cancel")
+                        Text(stringResource(R.string.action_cancel))
                     }
                 }
             )
@@ -195,11 +204,11 @@ fun PluginManagerScreenContent(
         uiState.error?.let { errorMessage ->
             AlertDialog(
                 onDismissRequest = { onEvent(PluginManagerEvent.DismissError) },
-                title = { Text("Error") },
+                title = { Text(stringResource(R.string.error_dialog_title)) },
                 text = { Text(errorMessage) },
                 confirmButton = {
                     TextButton(onClick = { onEvent(PluginManagerEvent.DismissError)} ) {
-                        Text("OK")
+                        Text(stringResource(R.string.action_ok))
                     }
                 }
             )

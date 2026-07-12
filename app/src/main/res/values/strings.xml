@@ -1,3 +1,33 @@
 <resources>
     <string name="app_name">PluginCalculator</string>
+
+    <!-- Calculator screen -->
+    <string name="calculator_title">Modular Calc</string>
+    <string name="cd_manage_plugins">Manage plugins</string>
+
+    <!-- Common -->
+    <string name="cd_back">Back</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_ok">OK</string>
+
+    <!-- Plugin manager screen -->
+    <string name="plugin_manager_title">Plugin Manager</string>
+    <string name="cd_install_plugin">Install plugin</string>
+    <string name="plugin_manager_empty_state">There are no plugins installed. Press + to add.</string>
+    <string name="plugin_update_dialog_title">Update plugin?</string>
+    <string name="plugin_update_dialog_message">The \'%1$s\' plugin already exists (version %2$s). Want to overwrite it with version %3$s?</string>
+    <string name="action_rewrite">Rewrite</string>
+    <string name="error_dialog_title">Error</string>
+
+    <!-- Plugin item card / detail screen -->
+    <string name="plugin_metadata_line">v%1$s • %2$s • %3$s</string>
+    <string name="plugin_detail_title">Plugin Details</string>
+    <string name="plugin_version_label">v%1$s</string>
+    <string name="plugin_author_label">Author: %1$s</string>
+    <string name="plugin_category_label">Category: %1$s</string>
+    <string name="plugin_description_header">Description</string>
+    <string name="plugin_no_description">No description</string>
+    <string name="plugin_operations_header">Available operations</string>
+    <string name="plugin_operation_id_label">ID: %1$s</string>
+    <string name="action_delete_plugin">Delete plugin</string>
 </resources>

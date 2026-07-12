@@ -12,9 +12,11 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.github.mykolab31.plugincalculator.R
 import com.github.mykolab31.plugincalculator.data.model.Plugin
 
 @Composable
@@ -43,7 +45,12 @@ fun PluginItemCard(
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "v${plugin.version} • ${plugin.author} • ${plugin.category.name}",
+                    text = stringResource(
+                        R.string.plugin_metadata_line,
+                        plugin.version,
+                        plugin.author,
+                        plugin.category.name
+                    ),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,

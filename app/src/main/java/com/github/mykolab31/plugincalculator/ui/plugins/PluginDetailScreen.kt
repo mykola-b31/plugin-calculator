@@ -40,10 +40,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.github.mykolab31.plugincalculator.R
 import com.github.mykolab31.plugincalculator.data.model.OperationArity
 import com.github.mykolab31.plugincalculator.data.model.Plugin
 import com.github.mykolab31.plugincalculator.data.model.PluginCategory
@@ -91,12 +93,12 @@ fun PluginDetailScreenContent(
         modifier = modifier.fillMaxSize(),
         topBar = {
             TopAppBar(
-                title = { Text("Plugin Details") },
+                title = { Text(stringResource(R.string.plugin_detail_title)) },
                 navigationIcon = {
                     IconButton( onClick = onNavigateBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back"
+                            contentDescription = stringResource(R.string.cd_back)
                         )
                     }
                 },
@@ -158,7 +160,7 @@ fun PluginDetailScreenContent(
                                             .padding(horizontal = 8.dp, vertical = 4.dp)
                                     ) {
                                         Text(
-                                            text = "v${plugin.version}",
+                                            text = stringResource(R.string.plugin_version_label, plugin.version),
                                             style = MaterialTheme.typography.labelMedium,
                                             color = MaterialTheme.colorScheme.onSecondaryContainer,
                                             fontWeight = FontWeight.Bold
@@ -167,13 +169,13 @@ fun PluginDetailScreenContent(
                                 }
                                 Spacer(modifier = Modifier.height(8.dp))
                                 Text(
-                                    text = "Author: ${plugin.author}",
+                                    text = stringResource(R.string.plugin_author_label, plugin.author),
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text(
-                                    text = "Category: ${plugin.category.name}",
+                                    text = stringResource(R.string.plugin_category_label, plugin.category.name),
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -186,14 +188,14 @@ fun PluginDetailScreenContent(
                         ) {
                             Column {
                                 Text(
-                                    text = "Description",
+                                    text = stringResource(R.string.plugin_description_header),
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.primary
                                 )
                                 Spacer(modifier = Modifier.height(8.dp))
                                 Text(
-                                    text = plugin.description.ifEmpty { "No description" },
+                                    text = plugin.description.ifEmpty { stringResource(R.string.plugin_no_description) },
                                     style = MaterialTheme.typography.bodyLarge,
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
@@ -207,7 +209,7 @@ fun PluginDetailScreenContent(
                             ) {
                                 Column {
                                     Text(
-                                        text = "Available operations",
+                                        text = stringResource(R.string.plugin_operations_header),
                                         style = MaterialTheme.typography.titleMedium,
                                         fontWeight = FontWeight.Bold,
                                         color = MaterialTheme.colorScheme.primary
@@ -238,7 +240,7 @@ fun PluginDetailScreenContent(
                                             }
                                             Spacer(modifier = Modifier.width(16.dp))
                                             Text(
-                                                text = "ID: ${operation.id}",
+                                                text = stringResource(R.string.plugin_operation_id_label, operation.id),
                                                 style = MaterialTheme.typography.bodyMedium,
                                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                                             )
@@ -269,7 +271,7 @@ fun PluginDetailScreenContent(
                                 contentDescription = null,
                                 modifier = Modifier.padding(end = 8.dp)
                             )
-                            Text("Delete plugin")
+                            Text(stringResource(R.string.action_delete_plugin))
                         }
                     }
                 }
