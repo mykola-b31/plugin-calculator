@@ -50,7 +50,7 @@ class CalculatorViewModelTest {
         viewModel.onEvent(CalculatorEvent.EqualsPressed)
 
         val state = viewModel.uiState.value
-        assertEquals("Division by zero", state.error)
+        assertEquals("Cannot divide by zero", state.error)
     }
 
     @Test
@@ -59,7 +59,7 @@ class CalculatorViewModelTest {
         viewModel.onEvent(CalculatorEvent.OperationPressed("/"))
         viewModel.onEvent(CalculatorEvent.NumberPressed("0"))
         viewModel.onEvent(CalculatorEvent.EqualsPressed)
-        assertEquals("Division by zero", viewModel.uiState.value.error)
+        assertEquals("Cannot divide by zero", viewModel.uiState.value.error)
 
         viewModel.onEvent(CalculatorEvent.NumberPressed("4"))
         viewModel.onEvent(CalculatorEvent.OperationPressed("+"))
@@ -77,7 +77,7 @@ class CalculatorViewModelTest {
         viewModel.onEvent(CalculatorEvent.OperationPressed("/"))
         viewModel.onEvent(CalculatorEvent.NumberPressed("0"))
         viewModel.onEvent(CalculatorEvent.EqualsPressed)
-        assertEquals("Division by zero", viewModel.uiState.value.error)
+        assertEquals("Cannot divide by zero", viewModel.uiState.value.error)
 
         viewModel.onEvent(CalculatorEvent.NumberPressed("7"))
 
