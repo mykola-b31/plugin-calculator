@@ -213,10 +213,10 @@ class CalculatorViewModel(
 
     private fun handlePluginOperation(plugin: Plugin, operationId: String) {
         val operation = plugin.operations.find { it.id == operationId } ?: return
-        val current = _uiState.value.expression.toDoubleOrNull() ?: return
 
         when (operation.arity) {
             OperationArity.BINARY -> {
+                val current = _uiState.value.expression.toDoubleOrNull() ?: return
                 firstOperand = current
                 pendingOperation = PendingOperation.PluginOp(plugin, operationId, operation.label)
                 shouldResetExpression = true
@@ -224,6 +224,7 @@ class CalculatorViewModel(
             }
 
             OperationArity.UNARY -> {
+                val current = _uiState.value.expression.toDoubleOrNull() ?: return
                 shouldResetExpression = true
                 viewModelScope.launch {
                     val result = repository.executeOperation(plugin, operationId, listOf(current))
