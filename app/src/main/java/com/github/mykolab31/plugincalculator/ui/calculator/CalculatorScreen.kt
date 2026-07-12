@@ -99,7 +99,7 @@ fun CalculatorScreenContent(
                     IconButton(onClick = onNavigateToPlugins) {
                         Icon(
                             imageVector = Icons.Default.Settings,
-                            contentDescription = "Керування плагінами",
+                            contentDescription = "Plugin manager",
                             tint = MaterialTheme.colorScheme.primary
                         )
                     }
@@ -119,9 +119,12 @@ fun CalculatorScreenContent(
                     horizontalAlignment = Alignment.End
                 ) {
                     Text(
-                        text = uiState.result,
+                        text = uiState.error ?: uiState.result,
                         fontSize = 24.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = if (uiState.error != null)
+                            MaterialTheme.colorScheme.error
+                        else
+                            MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                         textAlign = TextAlign.End,

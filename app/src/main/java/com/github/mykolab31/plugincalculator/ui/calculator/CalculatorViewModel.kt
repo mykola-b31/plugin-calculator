@@ -16,6 +16,7 @@ import kotlinx.coroutines.launch
 data class CalculatorUiState(
     val expression: String = "",
     val result: String = "",
+    val error: String? = null,
     val plugins: List<Plugin> = emptyList(),
     val isLoading: Boolean = false
 )
@@ -82,12 +83,12 @@ class CalculatorViewModel(
         _uiState.update { state ->
             if (shouldResetExpression) {
                 shouldResetExpression = false
-                state.copy(expression = digit)
+                state.copy(expression = digit, error = null)
             } else {
                 if (state.expression.length >= MAX_INPUT_LENGTH) return@update state
 
                 val currentExpression = if (state.expression == "0") digit else state.expression + digit
-                state.copy(expression = currentExpression)
+                state.copy(expression = currentExpression, error = null)
             }
         }
     }
@@ -96,11 +97,11 @@ class CalculatorViewModel(
         _uiState.update { state ->
             if (shouldResetExpression) {
                 shouldResetExpression = false
-                return@update state.copy(expression = "0.")
+                return@update state.copy(expression = "0.", error = null)
             }
             if (state.expression.contains(".")) return@update state
 
-            state.copy(expression = state.expression + ".")
+            state.copy(expression = state.expression + ".", error = null)
         }
     }
 
@@ -112,7 +113,7 @@ class CalculatorViewModel(
             } else {
                 (-current).toString()
             }
-            state.copy(expression = negated)
+            state.copy(expression = negated, error = null)
         }
     }
 
@@ -124,12 +125,18 @@ class CalculatorViewModel(
             if (op is PendingOperation.BuiltIn) {
                 val intermediate = calculateBuiltIn(firstOperand!!, op.symbol, current)
                 firstOperand = intermediate
-                _uiState.update { it.copy(expression = formatResult(intermediate), result = "${formatResult(intermediate)} $symbol") }
+                _uiState.update {
+                    it.copy(
+                        expression = formatResult(intermediate),
+                        result = "${formatResult(intermediate)} $symbol",
+                        error = null
+                    )
+                }
             }
         } else {
             firstOperand = current
             _uiState.update { state ->
-                state.copy(result = "${formatResult(current)} $symbol")
+                state.copy(result = "${formatResult(current)} $symbol", error = null)
             }
         }
 
@@ -161,7 +168,8 @@ class CalculatorViewModel(
                 _uiState.update { state ->
                     state.copy(
                         expression = formatResult(result),
-                        result = "${formatResult(first)} ${operation.symbol} ${formatResult(current)}"
+                        result = "${formatResult(first)} ${operation.symbol} ${formatResult(current)}",
+                        error = null
                     )
                 }
                 firstOperand = null
@@ -184,7 +192,7 @@ class CalculatorViewModel(
             val newExpr = state.expression.dropLast(1)
             val finalExpr = if (newExpr.isEmpty() || newExpr == "-") "0" else newExpr
 
-            state.copy(expression = finalExpr)
+            state.copy(expression = finalExpr, error = null)
         }
     }
 
@@ -197,6 +205,7 @@ class CalculatorViewModel(
                 firstOperand = current
                 pendingOperation = PendingOperation.PluginOp(plugin, operationId, operation.label)
                 shouldResetExpression = true
+                _uiState.update { it.copy(error = null) }
             }
 
             OperationArity.UNARY -> {
@@ -228,7 +237,8 @@ class CalculatorViewModel(
                 _uiState.update { state ->
                     state.copy(
                         expression = formatResult(result.value),
-                        result = "$operationLabel(${formatResult(input)}) = "
+                        result = "$operationLabel(${formatResult(input)}) = ",
+                        error = null
                     )
                 }
             }
@@ -237,14 +247,15 @@ class CalculatorViewModel(
                 _uiState.update { state ->
                     state.copy(
                         expression = "[matrix]",
-                        result = formatMatrix(result.rows)
+                        result = formatMatrix(result.rows),
+                        error = null
                     )
                 }
             }
             is CalculationResult.Err -> {
                 shouldResetExpression = true
                 _uiState.update { state ->
-                    state.copy(result = "Error: ${result.message}")
+                    state.copy(error = result.message)
                 }
             }
         }
@@ -256,7 +267,8 @@ class CalculatorViewModel(
                 _uiState.update { state ->
                     state.copy(
                         expression = formatResult(result.value),
-                        result = "$operationLabel = "
+                        result = "$operationLabel = ",
+                        error = null
                     )
                 }
             }
@@ -264,13 +276,14 @@ class CalculatorViewModel(
                 _uiState.update { state ->
                     state.copy(
                         expression = "[matrix]",
-                        result = formatMatrix(result.rows)
+                        result = formatMatrix(result.rows),
+                        error = null
                     )
                 }
             }
             is CalculationResult.Err -> {
                 _uiState.update { state ->
-                    state.copy(result = "Error: ${result.message}")
+                    state.copy(error =  result.message)
                 }
             }
         }
