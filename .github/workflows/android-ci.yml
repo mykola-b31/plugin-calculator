@@ -26,9 +26,12 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
+      - name: Run unit tests
+        run: ./gradlew testDebugUnitTest --stacktrace
+
       - name: Upload test report
         if: always()
-        uses: actions/uploas-artifact@v4
+        uses: actions/upload-artifact@v4
         with:
           name: unit-test-report
-          path: app/build/report/tests/testDebugUnitTest/
+          path: app/build/reports/tests/testDebugUnitTest/
