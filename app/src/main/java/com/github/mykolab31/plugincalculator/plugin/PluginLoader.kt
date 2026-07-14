@@ -22,9 +22,6 @@ class PluginLoader (
     companion object {
         private const val MANIFEST_FILENAME = "manifest.json"
         private const val PLUGINS_DIR = "plugins"
-        private const val MAX_ENTRY_SIZE_BYTES = 5 * 1024 * 1024L
-        private const val MAX_TOTAL_UNCOMPRESSED_SIZE_BYTES = 20 * 1024 * 1024L
-        private const val MAX_ENTRY_COUNT = 50
     }
 
     /**
@@ -79,60 +76,9 @@ class PluginLoader (
      * Only text files (manifest, Lua scripts) are expected.
      */
     private fun extractArchive(uri: Uri): Map<String, String> {
-        val entries = mutableMapOf<String, String>()
-        var totalUncompressedSize = 0L
-        var entryCount = 0
-
-        context.contentResolver.openInputStream(uri)?.use { inputStream ->
-            ZipInputStream(inputStream).use { zip ->
-                var entry = zip.nextEntry
-                while (entry != null) {
-                    if (!entry.isDirectory) {
-                        entryCount++
-                        if (entryCount > MAX_ENTRY_COUNT) {
-                            throw SecurityException(
-                                "Archive contains too many files (limit: $MAX_ENTRY_COUNT)"
-                            )
-                        }
-
-                        val entryName = entry.name
-                        if (entryName.contains("..") || entryName.startsWith("/")) {
-                            throw SecurityException("Unsafe entry path detected: $entryName")
-                        }
-
-                        val outputStream = ByteArrayOutputStream()
-                        val buffer = ByteArray(8192)
-                        var entryBytes = 0L
-                        var bytesRead = zip.read(buffer)
-
-                        while (bytesRead != -1) {
-                            entryBytes += bytesRead
-                            totalUncompressedSize += bytesRead
-
-                            if (entryBytes > MAX_ENTRY_SIZE_BYTES) {
-                                throw SecurityException(
-                                    "Entry '${entry.name}' exceeds maximum allowed size"
-                                )
-                            }
-                            if (totalUncompressedSize > MAX_TOTAL_UNCOMPRESSED_SIZE_BYTES) {
-                                throw SecurityException(
-                                    "Archive exceeds maximum total uncompressed size ($MAX_TOTAL_UNCOMPRESSED_SIZE_BYTES bytes"
-                                )
-                            }
-
-                            outputStream.write(buffer, 0, bytesRead)
-                            bytesRead = zip.read(buffer)
-                        }
-
-                        entries[entryName] = outputStream.toString(Charsets.UTF_8.name())
-                    }
-                    zip.closeEntry()
-                    entry = zip.nextEntry
-                }
-            }
-        } ?: throw IOException("Could not open file stream")
-
-        return entries
+        val stream = context.contentResolver.openInputStream(uri)
+            ?: throw IOException("Could not open file stream")
+        return stream.use { ZipArchiveExtractor.extract(it) }
     }
 
     /**
