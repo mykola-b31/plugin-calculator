@@ -23,6 +23,8 @@ class PluginLoader (
         private const val MANIFEST_FILENAME = "manifest.json"
         private const val PLUGINS_DIR = "plugins"
         private const val MAX_ENTRY_SIZE_BYTES = 5 * 1024 * 1024L
+        private const val MAX_TOTAL_UNCOMPRESSED_SIZE_BYTES = 20 * 1024 * 1024L
+        private const val MAX_ENTRY_COUNT = 50
     }
 
     /**
@@ -78,12 +80,21 @@ class PluginLoader (
      */
     private fun extractArchive(uri: Uri): Map<String, String> {
         val entries = mutableMapOf<String, String>()
+        var totalUncompressedSize = 0L
+        var entryCount = 0
 
         context.contentResolver.openInputStream(uri)?.use { inputStream ->
             ZipInputStream(inputStream).use { zip ->
                 var entry = zip.nextEntry
                 while (entry != null) {
                     if (!entry.isDirectory) {
+                        entryCount++
+                        if (entryCount > MAX_ENTRY_COUNT) {
+                            throw SecurityException(
+                                "Archive contains too many files (limit: $MAX_ENTRY_COUNT)"
+                            )
+                        }
+
                         val entryName = entry.name
                         if (entryName.contains("..") || entryName.startsWith("/")) {
                             throw SecurityException("Unsafe entry path detected: $entryName")
@@ -91,16 +102,24 @@ class PluginLoader (
 
                         val outputStream = ByteArrayOutputStream()
                         val buffer = ByteArray(8192)
-                        var totalBytes = 0L
+                        var entryBytes = 0L
                         var bytesRead = zip.read(buffer)
 
                         while (bytesRead != -1) {
-                            totalBytes += bytesRead
-                            if (totalBytes > MAX_ENTRY_SIZE_BYTES) {
+                            entryBytes += bytesRead
+                            totalUncompressedSize += bytesRead
+
+                            if (entryBytes > MAX_ENTRY_SIZE_BYTES) {
                                 throw SecurityException(
                                     "Entry '${entry.name}' exceeds maximum allowed size"
                                 )
                             }
+                            if (totalUncompressedSize > MAX_TOTAL_UNCOMPRESSED_SIZE_BYTES) {
+                                throw SecurityException(
+                                    "Archive exceeds maximum total uncompressed size ($MAX_TOTAL_UNCOMPRESSED_SIZE_BYTES bytes"
+                                )
+                            }
+
                             outputStream.write(buffer, 0, bytesRead)
                             bytesRead = zip.read(buffer)
                         }
