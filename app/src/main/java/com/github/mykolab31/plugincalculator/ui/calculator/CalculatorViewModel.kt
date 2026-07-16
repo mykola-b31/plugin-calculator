@@ -118,38 +118,7 @@ class CalculatorViewModel(
     }
 
     private fun handleOperation(symbol: String) {
-        val current = _uiState.value.expression.toBigDecimalOrNull() ?: return
-
-        if (firstOperand != null && pendingOperation != null && !shouldResetExpression) {
-            val op = pendingOperation
-            if (op is PendingOperation.BuiltIn) {
-                try {
-                    val intermediate = calculateBuiltIn(firstOperand!!, op.symbol, current)
-                    firstOperand = intermediate
-                    _uiState.update {
-                        it.copy(
-                            expression = formatResult(intermediate),
-                            result = "${formatResult(intermediate)} $symbol",
-                            error = null
-                        )
-                    }
-                } catch (_: ArithmeticException) {
-                    _uiState.update { it.copy(error = builtInErrorMessage(op.symbol, current)) }
-                    firstOperand = null
-                    pendingOperation = null
-                    shouldResetExpression = true
-                    return
-                }
-            }
-        } else {
-            firstOperand = current
-            _uiState.update { state ->
-                state.copy(result = "${formatResult(current)} $symbol", error = null)
-            }
-        }
-
-        pendingOperation = PendingOperation.BuiltIn(symbol)
-        shouldResetExpression = true
+        processBinaryOperation(PendingOperation.BuiltIn(symbol))
     }
 
     private fun handleEquals() {
@@ -159,35 +128,26 @@ class CalculatorViewModel(
 
         shouldResetExpression = true
 
-        when (operation) {
-            is PendingOperation.PluginOp -> {
-                val plugin = _uiState.value.plugins.find { it.id == operation.plugin.id } ?: return
+        viewModelScope.launch {
+            val finalResult = calculateIntermediateResult(first, operation, current)
 
-                viewModelScope.launch {
-                    val result = repository.executeOperation(plugin, operation.operationId, listOf(first, current))
-                    handleCalculationResult(result, operation.label, current)
-
-                    firstOperand = null
-                    pendingOperation = null
-                }
-            }
-            is PendingOperation.BuiltIn -> {
-                try {
-                    val result = calculateBuiltIn(first, operation.symbol, current)
-                    _uiState.update { state ->
-                        state.copy(
-                            expression = formatResult(result),
-                            result = "${formatResult(first)} ${operation.symbol} ${formatResult(current)}",
-                            error = null
-                        )
-                    }
-                } catch (_: ArithmeticException) {
-                    _uiState.update { it.copy(error = builtInErrorMessage(operation.symbol, current)) }
+            if (finalResult != null) {
+                val opString = when (operation) {
+                    is PendingOperation.BuiltIn -> operation.symbol
+                    is PendingOperation.PluginOp -> operation.label
                 }
 
-                firstOperand = null
-                pendingOperation = null
+                _uiState.update { state ->
+                    state.copy(
+                        expression = formatResult(finalResult),
+                        result = "${formatResult(first)} $opString ${formatResult(current)} =",
+                        error = null
+                    )
+                }
             }
+
+            firstOperand = null
+            pendingOperation = null
         }
     }
 
@@ -214,11 +174,7 @@ class CalculatorViewModel(
 
         when (operation.arity) {
             OperationArity.BINARY -> {
-                val current = _uiState.value.expression.toBigDecimalOrNull() ?: return
-                firstOperand = current
-                pendingOperation = PendingOperation.PluginOp(plugin, operationId, operation.label)
-                shouldResetExpression = true
-                _uiState.update { it.copy(error = null) }
+                processBinaryOperation(PendingOperation.PluginOp(plugin, operationId, operation.label))
             }
 
             OperationArity.UNARY -> {
@@ -314,6 +270,83 @@ class CalculatorViewModel(
                 a.divide(b, 10, RoundingMode.HALF_UP).stripTrailingZeros()
             }
             else -> throw IllegalArgumentException("Unknown operation")
+        }
+    }
+
+    private fun processBinaryOperation(newOp: PendingOperation) {
+        val current = _uiState.value.expression.toBigDecimalOrNull() ?: return
+
+        if (firstOperand != null && pendingOperation != null && !shouldResetExpression) {
+            viewModelScope.launch {
+                val intermediate = calculateIntermediateResult(firstOperand!!, pendingOperation!!, current)
+
+                if (intermediate != null) {
+                    firstOperand = intermediate
+                    pendingOperation = newOp
+                    shouldResetExpression = true
+                    val opString = when (newOp) {
+                        is PendingOperation.BuiltIn -> newOp.symbol
+                        is PendingOperation.PluginOp -> newOp.label
+                    }
+
+                    _uiState.update {
+                        it.copy(
+                            expression = formatResult(intermediate),
+                            result = "${formatResult(intermediate)} $opString ",
+                            error = null
+                        )
+                    }
+                } else {
+                    firstOperand = null
+                    pendingOperation = null
+                    shouldResetExpression = true
+                }
+            }
+        } else {
+            firstOperand = current
+            pendingOperation = newOp
+            shouldResetExpression = true
+
+            val opString = when (newOp) {
+                is PendingOperation.BuiltIn -> newOp.symbol
+                is PendingOperation.PluginOp -> newOp.label
+            }
+
+            _uiState.update { state ->
+                state.copy(result = "${formatResult(current)} $opString ", error = null)
+            }
+        }
+    }
+
+    private suspend fun calculateIntermediateResult(
+        first: BigDecimal,
+        operation: PendingOperation,
+        current: BigDecimal
+    ): BigDecimal? {
+        return when (operation) {
+            is PendingOperation.BuiltIn -> {
+                try {
+                    calculateBuiltIn(first, operation.symbol, current)
+                } catch (_: ArithmeticException) {
+                    _uiState.update { it.copy(error = builtInErrorMessage(operation.symbol, current)) }
+                    null
+                }
+            }
+            is PendingOperation.PluginOp -> {
+                val plugin = _uiState.value.plugins.find { it.id == operation.plugin.id } ?: return null
+                val result = repository.executeOperation(plugin, operation.operationId, listOf(first, current))
+                when (result) {
+                    is CalculationResult.Number -> result.value
+                    is CalculationResult.Matrix -> {
+                        _uiState.update { it.copy(error = "Cannot chain matrix operations") }
+                        null
+                    }
+                    is CalculationResult.Err -> {
+                        _uiState.update { it.copy(error = result.message) }
+                        null
+                    }
+                }
+            }
         }
     }
 
