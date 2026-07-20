@@ -68,6 +68,8 @@ class PluginLoader (
             PluginLoadResult.Success(plugin)
         } catch (e: IOException) {
             PluginLoadResult.Error("Failed to save plugin: ${e.message}")
+        } catch (e: SecurityException) {
+            PluginLoadResult.Error("Failed to save plugin: ${e.message}")
         }
     }
 
@@ -86,7 +88,13 @@ class PluginLoader (
      * Path: filesDir/plugins/<pluginId>/
      */
     private fun savePlugin(pluginId: String, files: Map<String, String>) {
-        val pluginDir = File(context.filesDir, "$PLUGINS_DIR/$pluginId")
+        val pluginsRootDir = File(context.filesDir, PLUGINS_DIR)
+        val pluginDir = File(pluginsRootDir, pluginId)
+
+        if (!pluginDir.canonicalPath.startsWith(pluginsRootDir.canonicalPath + File.separator)) {
+            throw SecurityException("Plugin id escaped the plugins directory: $pluginId")
+        }
+
         if (pluginDir.exists()) pluginDir.deleteRecursively()
         pluginDir.mkdirs()
 

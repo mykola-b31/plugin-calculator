@@ -188,6 +188,134 @@ class ManifestParserTest {
     }
 
     @Test
+    fun `manifest with path traversal in id is rejected`() {
+        val manifestJson = """
+        {
+            "id": "../../../../evil",
+            "name": "Evil",
+            "version": "1.0.0",
+            "description": "Malicious plugin",
+            "category": "MATH",
+            "entryFile": "main.lua",
+            "operations": [
+                { "id": "x", "label": "x", "inputs": 1 }
+            ]
+        }
+    """.trimIndent()
+
+        val result = ManifestParser().parse(manifestJson)
+
+        assertTrue(result is ManifestParseResult.Error)
+        assertTrue((result as ManifestParseResult.Error).message.contains("Invalid plugin id"))
+    }
+
+    @Test
+    fun `manifest with id equal to double dot is rejected`() {
+        val manifestJson = """
+        {
+            "id": "..",
+            "name": "Evil",
+            "version": "1.0.0",
+            "description": "Malicious plugin",
+            "category": "MATH",
+            "entryFile": "main.lua",
+            "operations": [
+                { "id": "x", "label": "x", "inputs": 1 }
+            ]
+        }
+    """.trimIndent()
+
+        val result = ManifestParser().parse(manifestJson)
+
+        assertTrue(result is ManifestParseResult.Error)
+    }
+
+    @Test
+    fun `manifest with id containing path separator is rejected`() {
+        val manifestJson = """
+        {
+            "id": "com/example/evil",
+            "name": "Evil",
+            "version": "1.0.0",
+            "description": "Malicious plugin",
+            "category": "MATH",
+            "entryFile": "main.lua",
+            "operations": [
+                { "id": "x", "label": "x", "inputs": 1 }
+            ]
+        }
+    """.trimIndent()
+
+        val result = ManifestParser().parse(manifestJson)
+
+        assertTrue(result is ManifestParseResult.Error)
+    }
+
+    @Test
+    fun `manifest with path traversal in entryFile is rejected`() {
+        val manifestJson = """
+        {
+            "id": "com.example.evil",
+            "name": "Evil",
+            "version": "1.0.0",
+            "description": "Malicious plugin",
+            "category": "MATH",
+            "entryFile": "../../../etc/passwd",
+            "operations": [
+                { "id": "x", "label": "x", "inputs": 1 }
+            ]
+        }
+    """.trimIndent()
+
+        val result = ManifestParser().parse(manifestJson)
+
+        assertTrue(result is ManifestParseResult.Error)
+        assertTrue((result as ManifestParseResult.Error).message.contains("entry file"))
+    }
+
+    @Test
+    fun `manifest with absolute path entryFile is rejected`() {
+        val manifestJson = """
+        {
+            "id": "com.example.evil",
+            "name": "Evil",
+            "version": "1.0.0",
+            "description": "Malicious plugin",
+            "category": "MATH",
+            "entryFile": "/etc/passwd",
+            "operations": [
+                { "id": "x", "label": "x", "inputs": 1 }
+            ]
+        }
+    """.trimIndent()
+
+        val result = ManifestParser().parse(manifestJson)
+
+        assertTrue(result is ManifestParseResult.Error)
+    }
+
+    @Test
+    fun `manifest with normal nested entryFile is accepted`() {
+        val manifestJson = """
+        {
+            "id": "com.example.nested",
+            "name": "Nested",
+            "version": "1.0.0",
+            "description": "Plugin with nested entry file",
+            "category": "MATH",
+            "entryFile": "scripts/main.lua",
+            "operations": [
+                { "id": "x", "label": "x", "inputs": 1 }
+            ]
+        }
+    """.trimIndent()
+
+        val result = ManifestParser().parse(manifestJson)
+
+        assertTrue(result is ManifestParseResult.Success)
+    }
+
+    @Test
     fun `manifest with malformed minAppVersion is rejected`() {
         val parser = ManifestParser(currentAppVersion = "1.0.0")
         val manifestJson = """

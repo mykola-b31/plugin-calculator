@@ -42,6 +42,21 @@ class ManifestParser(
         ignoreUnknownKeys = true
     }
 
+    companion object {
+        // Plugin id becomes a directory name under filesDir/plugins/, so it must
+        // never contain path separators or ".." - otherwise a malicious manifest
+        // could write files outside the intended plugin directory
+        private const val MAX_ID_LENGTH = 128
+        private val ID_REGEX = Regex("[A-Za-z0-9._-]{1,$MAX_ID_LENGTH}")
+
+        private fun isSafeRelativePath(path: String): Boolean {
+            if (path.isBlank()) return false
+            if (path.startsWith("/") || path.startsWith("\\")) return false
+            val segments = path.split("/", "\\")
+            return segments.none { it == ".." || it.isEmpty()}
+        }
+    }
+
     /**
      * Parses the JSON content of manifest.json into a Plugin domain model.
      * Unknown category strings fall back tp PluginCategory.OTHER.
@@ -53,6 +68,19 @@ class ManifestParser(
             return ManifestParseResult.Error("Invalid manifest format: ${e.message}")
         } catch (e: Exception) {
             return ManifestParseResult.Error("Failed to parse manifest: ${e.message}")
+        }
+
+        if (!ID_REGEX.matches(manifest.id) || manifest.id == "." || manifest.id == "..") {
+            return ManifestParseResult.Error(
+                "Invalid plugin id '${manifest.id}': only letters, digits, dots, hyphens and " +
+                        "underscores are allowed (max $MAX_ID_LENGTH characters), and it cannot be '.' or '..'"
+            )
+        }
+
+        if (!isSafeRelativePath(manifest.entryFile)) {
+            return ManifestParseResult.Error(
+                "Invalid entry file '${manifest.entryFile}': must be relative path without '..' segments"
+            )
         }
 
         if (manifest.operations.isEmpty()) {
@@ -79,7 +107,7 @@ class ManifestParser(
 
         val category = try {
             PluginCategory.valueOf(manifest.category.uppercase())
-        } catch (e: IllegalArgumentException) {
+        } catch (_: IllegalArgumentException) {
             PluginCategory.OTHER
         }
 
