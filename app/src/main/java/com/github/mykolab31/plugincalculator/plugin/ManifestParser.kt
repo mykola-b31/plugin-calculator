@@ -1,5 +1,6 @@
 package com.github.mykolab31.plugincalculator.plugin
 
+import com.github.mykolab31.plugincalculator.BuildConfig
 import com.github.mykolab31.plugincalculator.data.model.OperationArity
 import com.github.mykolab31.plugincalculator.data.model.Plugin
 import com.github.mykolab31.plugincalculator.data.model.PluginCategory
@@ -14,11 +15,11 @@ data class PluginManifest(
     val name: String,
     val author: String = "Unknown",
     val version: String,
+    val minAppVersion: String = "1.0.0",
     val description: String,
     val category: String,
     val entryFile: String,
-    val operations: List<PluginOperationDto>,
-    val minAppVersion: String = "1.0.0"
+    val operations: List<PluginOperationDto>
 )
 
 @Serializable
@@ -33,7 +34,9 @@ sealed class ManifestParseResult {
     data class Error(val message: String) : ManifestParseResult()
 }
 
-class ManifestParser {
+class ManifestParser(
+    private val currentAppVersion: String = BuildConfig.VERSION_NAME
+) {
 
     private val json = Json {
         ignoreUnknownKeys = true
@@ -59,9 +62,19 @@ class ManifestParser {
         val operations = manifest.operations.map { dto ->
             val arity = OperationArity.fromInputCount(dto.inputs)
                 ?: return ManifestParseResult.Error(
-                    "Operation '${dto.id}' declared inputs=${dto.inputs}, but only unary or binary is supported"
+                    "Operation '${dto.id}' declared inputs=${dto.inputs}, but only nullary, unary or binary is supported"
                 )
             PluginOperation(id = dto.id, label = dto.label, arity = arity)
+        }
+
+        when (AppVersion.isAtLeast(currentAppVersion, manifest.minAppVersion)) {
+            null -> return ManifestParseResult.Error(
+                "Invalid minAppVersion format: '${manifest.minAppVersion}'"
+            )
+            false -> return ManifestParseResult.Error(
+                "This plugin requires app version ${manifest.minAppVersion} or higher (current: $currentAppVersion)"
+            )
+            true -> Unit
         }
 
         val category = try {
@@ -75,6 +88,7 @@ class ManifestParser {
             name = manifest.name,
             author = manifest.author,
             version = manifest.version,
+            minAppVersion = manifest.minAppVersion,
             description = manifest.description,
             category = category,
             entryFile = manifest.entryFile,

@@ -38,6 +38,7 @@ class CalculatorViewModelTest {
         name = "Test Plugin",
         author = "test",
         version = "1.0.0",
+        minAppVersion = "1.0.0",
         description = "test",
         category = PluginCategory.OTHER,
         entryFile = "main.lua",

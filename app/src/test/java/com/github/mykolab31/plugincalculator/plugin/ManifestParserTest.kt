@@ -139,4 +139,74 @@ class ManifestParserTest {
         val operation = (result as ManifestParseResult.Success).plugin.operations.first()
         assertEquals(OperationArity.NULLARY, operation.arity)
     }
+
+    @Test
+    fun `manifest requiring newer app version is rejected`() {
+        val parser = ManifestParser(currentAppVersion = "1.0.0")
+        val manifestJson = """
+        {
+            "id": "test-plugin",
+            "name": "Test",
+            "version": "1.0.0",
+            "description": "Test plugin",
+            "category": "MATH",
+            "entryFile": "main.lua",
+            "minAppVersion": "2.0.0",
+            "operations": [
+                { "id": "sin", "label": "sin(x)", "inputs": 1 }
+            ]
+        }
+    """.trimIndent()
+
+        val result = parser.parse(manifestJson)
+
+        assertTrue(result is ManifestParseResult.Error)
+        assertTrue((result as ManifestParseResult.Error).message.contains("2.0.0"))
+    }
+
+    @Test
+    fun `manifest with compatible minAppVersion is accepted`() {
+        val parser = ManifestParser(currentAppVersion = "2.5.0")
+        val manifestJson = """
+        {
+            "id": "test-plugin",
+            "name": "Test",
+            "version": "1.0.0",
+            "description": "Test plugin",
+            "category": "MATH",
+            "entryFile": "main.lua",
+            "minAppVersion": "2.0.0",
+            "operations": [
+                { "id": "sin", "label": "sin(x)", "inputs": 1 }
+            ]
+        }
+    """.trimIndent()
+
+        val result = parser.parse(manifestJson)
+
+        assertTrue(result is ManifestParseResult.Success)
+    }
+
+    @Test
+    fun `manifest with malformed minAppVersion is rejected`() {
+        val parser = ManifestParser(currentAppVersion = "1.0.0")
+        val manifestJson = """
+        {
+            "id": "test-plugin",
+            "name": "Test",
+            "version": "1.0.0",
+            "description": "Test plugin",
+            "category": "MATH",
+            "entryFile": "main.lua",
+            "minAppVersion": "not-a-version",
+            "operations": [
+                { "id": "sin", "label": "sin(x)", "inputs": 1 }
+            ]
+        }
+    """.trimIndent()
+
+        val result = parser.parse(manifestJson)
+
+        assertTrue(result is ManifestParseResult.Error)
+    }
 }

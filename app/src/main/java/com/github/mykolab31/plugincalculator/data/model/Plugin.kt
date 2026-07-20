@@ -5,6 +5,7 @@ data class Plugin(
     val name: String,
     val author: String,
     val version: String,
+    val minAppVersion: String,
     val description: String,
     val category: PluginCategory,
     val entryFile: String,

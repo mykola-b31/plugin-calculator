@@ -288,6 +288,7 @@ fun PluginDetailScreenPreview() {
         id = "math_advanced",
         name = "Advanced Math",
         version = "1.2.0",
+        minAppVersion = "1.0.0",
         description = "This plugin adds support for complex trigonometric functions, logarithms, and constants for scientific computing.",
         author = "Mykola",
         category = PluginCategory.TRIGONOMETRY,
