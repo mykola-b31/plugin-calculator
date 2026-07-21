@@ -11,6 +11,10 @@ sealed class ValidationResult {
 class PluginValidator (
     private val manifestParser: ManifestParser = ManifestParser()
 ) {
+    companion object {
+        private const val VALIDATION_TIMEOUT_SECONDS = 3L
+    }
+
     /**
      * Validates a plugin package consisting of a manifest and Lua script
      *
@@ -36,11 +40,18 @@ class PluginValidator (
         }
 
         // level 3 - Contract
-        try {
-            globals.load(script, "plugin").call()
-        } catch (e: LuaError) {
-            return ValidationResult.Invalid("Runtime error while loading plugin: ${e.message}")
+        var contractError: String? = null
+        val timeoutMessage = LuaTimeoutRunner.runOrTimeoutMessage(VALIDATION_TIMEOUT_SECONDS) {
+            try {
+                globals.load(script, "plugin").call()
+            } catch (e: LuaError) {
+                contractError = "Runtime error while loading plugin: ${e.message}"
+            }
         }
+        if (timeoutMessage != null) {
+            return ValidationResult.Invalid("Plugin took too long to load: $timeoutMessage")
+        }
+        contractError?.let { return ValidationResult.Invalid(it) }
 
         val executeFunc = globals.get("execute")
         if (executeFunc.isnil()) {

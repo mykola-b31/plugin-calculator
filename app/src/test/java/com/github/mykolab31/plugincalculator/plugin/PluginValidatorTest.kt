@@ -73,4 +73,33 @@ class PluginValidatorTest {
         assertTrue(result is ValidationResult.Invalid)
         assertTrue((result as ValidationResult.Invalid).reason.contains("is not a function"))
     }
+
+    @Test
+    fun `infinite loop at top level does not hang validation`() {
+        val script = """
+        local x = 0
+        while true do
+            x = x + 1
+        end
+
+        function execute(operation, args)
+            return 1
+        end
+    """.trimIndent()
+
+        val start = System.currentTimeMillis()
+        val result = validator.validate(validManifest, script)
+        val elapsed = System.currentTimeMillis() - start
+
+        assertTrue(result is ValidationResult.Invalid)
+        assertTrue(
+            "Expected validation to fail with a bounded-execution-time reason, got: ${(result as ValidationResult.Invalid).reason}",
+            result.reason.contains("execution time", ignoreCase = true) ||
+                    result.reason.contains("too long", ignoreCase = true)
+        )
+        assertTrue(
+            "Expected validation to return well within the 3s outer timeout, took ${elapsed}ms",
+            elapsed < 3000
+        )
+    }
 }

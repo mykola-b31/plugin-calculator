@@ -1,9 +1,5 @@
 package com.github.mykolab31.plugincalculator.plugin
 
-import java.util.concurrent.Executors
-import java.util.concurrent.TimeUnit
-import java.util.concurrent.TimeoutException
-
 import com.github.mykolab31.plugincalculator.data.model.CalculationResult
 import org.luaj.vm2.LuaError
 import org.luaj.vm2.LuaTable
@@ -11,8 +7,6 @@ import org.luaj.vm2.LuaValue
 import java.math.BigDecimal
 
 class PluginExecutor {
-
-    private val executorService = Executors.newSingleThreadExecutor()
 
     companion object {
         private const val EXECUTION_TIMEOUT_SECONDS = 3L
@@ -27,18 +21,13 @@ class PluginExecutor {
      * @return execution result as LuaValue
      */
     fun execute(script: String, operation: String, args: List<BigDecimal>): PluginExecutionResult {
-        val future = executorService.submit<PluginExecutionResult> {
-            runScript(script, operation, args)
+        var result: PluginExecutionResult = PluginExecutionResult.Error("Plugin did not produce a result")
+
+        val timeoutMessage = LuaTimeoutRunner.runOrTimeoutMessage(EXECUTION_TIMEOUT_SECONDS) {
+            result = runScript(script, operation, args)
         }
 
-        return try {
-            future.get(EXECUTION_TIMEOUT_SECONDS, TimeUnit.SECONDS)
-        } catch (e: TimeoutException) {
-            future.cancel(true)
-            PluginExecutionResult.Error("Plugin execution timed out")
-        } catch (e: Exception) {
-            PluginExecutionResult.Error("Execution error: ${e.message}")
-        }
+        return timeoutMessage?.let { PluginExecutionResult.Error("Plugin execution timed out: $it") } ?: result
     }
 
 
