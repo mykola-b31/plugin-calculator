@@ -19,3 +19,23 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
+
+# --- LuaJ ---
+# LuaJ dispatches some library methods reflectively. Keep it whole rather
+# than risk a silent runtime failure inside plugin execution.
+-keep class org.luaj.vm2.** { *; }
+-dontwarn org.luaj.vm2.**
+
+# --- kotlinx.serialization ---
+# Standard rules from the kotlinx.serialization docs, scoped to our manifest
+# DTOs (ManifestParser.kt) which are the only @Serializable classes we ship.
+-keepattributes *Annotation*, InnerClasses
+-dontnote kotlinx.serialization.AnnotationsKt
+
+-keep,includedescriptorclasses class com.github.mykolab31.plugincalculator.**$$serializer { *; }
+-keepclassmembers class com.github.mykolab31.plugincalculator.** {
+    *** Companion;
+}
+-keepclasseswithmembers class com.github.mykolab31.plugincalculator.** {
+    kotlinx.serialization.KSerializer serializer(...);
+}
