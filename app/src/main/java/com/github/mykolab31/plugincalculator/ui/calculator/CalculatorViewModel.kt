@@ -57,6 +57,10 @@ class CalculatorViewModel(
     private var pendingOperation: PendingOperation? = null
     private var shouldResetExpression = false
 
+    private fun setError(message: String) {
+        _uiState.update { it.copy(error = message) }
+    }
+
     init {
         viewModelScope.launch {
             repository.installedPlugins.collect { plugins ->
@@ -122,7 +126,11 @@ class CalculatorViewModel(
     }
 
     private fun handleEquals() {
-        val current = _uiState.value.expression.toBigDecimalOrNull() ?: return
+        val current = _uiState.value.expression.toBigDecimalOrNull()
+        if (current == null) {
+            setError("Invalid number")
+            return
+        }
         val first = firstOperand ?: return
         val operation = pendingOperation ?: return
 
@@ -170,7 +178,11 @@ class CalculatorViewModel(
     }
 
     private fun handlePluginOperation(plugin: Plugin, operationId: String) {
-        val operation = plugin.operations.find { it.id == operationId } ?: return
+        val operation = plugin.operations.find { it.id == operationId }
+        if (operation == null) {
+            setError("Operation '$operationId' not found in plugin '${plugin.name}'")
+            return
+        }
 
         when (operation.arity) {
             OperationArity.BINARY -> {
@@ -178,7 +190,11 @@ class CalculatorViewModel(
             }
 
             OperationArity.UNARY -> {
-                val current = _uiState.value.expression.toBigDecimalOrNull() ?: return
+                val current = _uiState.value.expression.toBigDecimalOrNull()
+                if (current == null) {
+                    setError("Invalid number")
+                    return
+                }
                 shouldResetExpression = true
                 viewModelScope.launch {
                     val result = repository.executeOperation(plugin, operationId, listOf(current))
@@ -274,7 +290,11 @@ class CalculatorViewModel(
     }
 
     private fun processBinaryOperation(newOp: PendingOperation) {
-        val current = _uiState.value.expression.toBigDecimalOrNull() ?: return
+        val current = _uiState.value.expression.toBigDecimalOrNull()
+        if (current == null) {
+            setError("Invalid number")
+            return
+        }
 
         if (firstOperand != null && pendingOperation != null && !shouldResetExpression) {
             viewModelScope.launch {
@@ -333,17 +353,27 @@ class CalculatorViewModel(
                 }
             }
             is PendingOperation.PluginOp -> {
-                val plugin = _uiState.value.plugins.find { it.id == operation.plugin.id } ?: return null
-                val result = repository.executeOperation(plugin, operation.operationId, listOf(first, current))
-                when (result) {
-                    is CalculationResult.Number -> result.value
-                    is CalculationResult.Matrix -> {
-                        _uiState.update { it.copy(error = "Cannot chain matrix operations") }
-                        null
-                    }
-                    is CalculationResult.Err -> {
-                        _uiState.update { it.copy(error = result.message) }
-                        null
+                val plugin = _uiState.value.plugins.find { it.id == operation.plugin.id }
+                if (plugin == null) {
+                    _uiState.update { it.copy(error = "Plugin '${operation.label}' is no longer available") }
+                    null
+                } else {
+                    val result = repository.executeOperation(
+                        plugin,
+                        operation.operationId,
+                        listOf(first, current)
+                    )
+                    when (result) {
+                        is CalculationResult.Number -> result.value
+                        is CalculationResult.Matrix -> {
+                            _uiState.update { it.copy(error = "Cannot chain matrix operations") }
+                            null
+                        }
+
+                        is CalculationResult.Err -> {
+                            _uiState.update { it.copy(error = result.message) }
+                            null
+                        }
                     }
                 }
             }

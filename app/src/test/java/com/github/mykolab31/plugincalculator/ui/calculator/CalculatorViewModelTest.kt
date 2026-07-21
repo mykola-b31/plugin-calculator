@@ -154,7 +154,6 @@ class CalculatorViewModelTest {
         repository.setPlugins(listOf(plugin))
         repository.executeOperationResult = CalculationResult.Number(BigDecimal("3.14159"))
 
-        // Навмисно НЕ вводимо жодного числа перед натисканням.
         viewModel.onEvent(CalculatorEvent.PluginOperationPressed(plugin, "op"))
 
         val state = viewModel.uiState.value
@@ -179,4 +178,74 @@ class CalculatorViewModelTest {
         assertEquals("division undefined", state.error)
         assertBigDecimalListEquals(listOf(BigDecimal("5"), BigDecimal("2")), repository.lastExecuteArgs)
     }
+
+    // Invalid expression
+
+    @Test
+    fun `pressing decimal point alone then equals sets error instead of doing nothing`() {
+        viewModel.onEvent(CalculatorEvent.DecimalPressed)
+        viewModel.onEvent(CalculatorEvent.EqualsPressed)
+
+        val state = viewModel.uiState.value
+        assertEquals("Invalid number", state.error)
+    }
+
+    @Test
+    fun `pressing decimal point alone then an operator sets error instead of doing nothing`() {
+        viewModel.onEvent(CalculatorEvent.DecimalPressed)
+        viewModel.onEvent(CalculatorEvent.OperationPressed("+"))
+
+        val state = viewModel.uiState.value
+        assertEquals("Invalid number", state.error)
+    }
+
+    @Test
+    fun `unary plugin operation on invalid expression sets error and does not call repository`() {
+        val plugin = testPlugin(arity = OperationArity.UNARY)
+        repository.setPlugins(listOf(plugin))
+
+        viewModel.onEvent(CalculatorEvent.DecimalPressed)
+        viewModel.onEvent(CalculatorEvent.PluginOperationPressed(plugin, "op"))
+
+        val state = viewModel.uiState.value
+        assertEquals("Invalid number", state.error)
+        assertNull(repository.lastExecuteArgs)
+    }
+
+    @Test
+    fun `unknown operation id sets error instead of doing nothing`() {
+        val plugin = testPlugin()
+        repository.setPlugins(listOf(plugin))
+
+        viewModel.onEvent(CalculatorEvent.NumberPressed("5"))
+        viewModel.onEvent(CalculatorEvent.PluginOperationPressed(plugin, "does-not-exist"))
+
+        val state = viewModel.uiState.value
+        assertTrue(
+            "Expected an 'operation not found' error, got: ${state.error}",
+            state.error?.contains("not found") == true
+        )
+        assertNull(repository.lastExecuteArgs)
+    }
+
+    @Test
+    fun `plugin uninstalled mid-chain sets error instead of silently producing no result`() {
+        val plugin = testPlugin(arity = OperationArity.BINARY)
+        repository.setPlugins(listOf(plugin))
+
+        viewModel.onEvent(CalculatorEvent.NumberPressed("5"))
+        viewModel.onEvent(CalculatorEvent.PluginOperationPressed(plugin, "op"))
+
+        repository.setPlugins(emptyList())
+
+        viewModel.onEvent(CalculatorEvent.NumberPressed("2"))
+        viewModel.onEvent(CalculatorEvent.EqualsPressed)
+
+        val state = viewModel.uiState.value
+        assertTrue(
+            "Expected a 'plugin no longer available' error, got: ${state.error}",
+            state.error?.contains("no longer available") == true
+        )
+    }
+
 }
