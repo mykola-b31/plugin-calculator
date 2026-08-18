@@ -24,10 +24,14 @@ Most calculator apps hardcode every operation. This one treats operations as ins
 
 ## 📸 Screenshots
 
-<img src="docs/screenshots/calculator-light.jpg" width="23%" />
-<img src="docs/screenshots/calculator-dark.jpg" width="23%" />
-<img src="docs/screenshots/plugin-manager.jpg" width="23%" />
-<img src="docs/screenshots/plugin-detail.jpg" width="23%" />
+<table>
+  <tr>
+    <td align="center"><img src="docs/screenshots/calculator-light.jpg" width="180"/><br/><sub>Light theme</sub></td>
+    <td align="center"><img src="docs/screenshots/calculator-dark.jpg" width="180"/><br/><sub>Dark theme</sub></td>
+    <td align="center"><img src="docs/screenshots/plugin-manager.jpg" width="180"/><br/><sub>Plugin manager</sub></td>
+    <td align="center"><img src="docs/screenshots/plugin-detail.jpg" width="180"/><br/><sub>Plugin detail</sub></td>
+  </tr>
+</table>
 
 
 ## Project Structure
