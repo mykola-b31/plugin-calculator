@@ -20,7 +20,8 @@ data class CalculatorUiState(
     val result: String = "",
     val error: String? = null,
     val plugins: List<Plugin> = emptyList(),
-    val isLoading: Boolean = false
+    val isLoading: Boolean = false,
+    val isCalculating: Boolean = false
 )
 
 sealed class CalculatorEvent {
@@ -70,6 +71,8 @@ class CalculatorViewModel(
     }
 
     fun onEvent(event: CalculatorEvent) {
+        if (_uiState.value.isCalculating) return
+
         when (event) {
             is CalculatorEvent.NumberPressed -> handleNumber(event.digit)
             is CalculatorEvent.OperationPressed -> handleOperation(event.symbol)
@@ -135,27 +138,32 @@ class CalculatorViewModel(
         val operation = pendingOperation ?: return
 
         shouldResetExpression = true
+        _uiState.update { it.copy(isCalculating = true) }
 
         viewModelScope.launch {
-            val finalResult = calculateIntermediateResult(first, operation, current)
+            try {
+                val finalResult = calculateIntermediateResult(first, operation, current)
 
-            if (finalResult != null) {
-                val opString = when (operation) {
-                    is PendingOperation.BuiltIn -> operation.symbol
-                    is PendingOperation.PluginOp -> operation.label
+                if (finalResult != null) {
+                    val opString = when (operation) {
+                        is PendingOperation.BuiltIn -> operation.symbol
+                        is PendingOperation.PluginOp -> operation.label
+                    }
+
+                    _uiState.update { state ->
+                        state.copy(
+                            expression = formatResult(finalResult),
+                            result = "${formatResult(first)} $opString ${formatResult(current)} =",
+                            error = null
+                        )
+                    }
                 }
 
-                _uiState.update { state ->
-                    state.copy(
-                        expression = formatResult(finalResult),
-                        result = "${formatResult(first)} $opString ${formatResult(current)} =",
-                        error = null
-                    )
-                }
+                firstOperand = null
+                pendingOperation = null
+            } finally {
+                _uiState.update { it.copy(isCalculating = false) }
             }
-
-            firstOperand = null
-            pendingOperation = null
         }
     }
 
@@ -196,17 +204,27 @@ class CalculatorViewModel(
                     return
                 }
                 shouldResetExpression = true
+                _uiState.update { it.copy(isCalculating = true) }
                 viewModelScope.launch {
-                    val result = repository.executeOperation(plugin, operationId, listOf(current))
-                    handleCalculationResult(result, operation.label, current)
+                    try {
+                        val result = repository.executeOperation(plugin, operationId, listOf(current))
+                        handleCalculationResult(result, operation.label, current)
+                    } finally {
+                        _uiState.update { it.copy(isCalculating = false) }
+                    }
                 }
             }
 
             OperationArity.NULLARY -> {
                 shouldResetExpression = true
+                _uiState.update { it.copy(isCalculating = true) }
                 viewModelScope.launch {
-                    val result = repository.executeOperation(plugin, operationId, emptyList())
-                    handleNullaryResult(result, operation.label)
+                    try {
+                        val result = repository.executeOperation(plugin, operationId, emptyList())
+                        handleNullaryResult(result, operation.label)
+                    } finally {
+                        _uiState.update { it.copy(isCalculating = false) }
+                    }
                 }
             }
         }
@@ -297,29 +315,35 @@ class CalculatorViewModel(
         }
 
         if (firstOperand != null && pendingOperation != null && !shouldResetExpression) {
+            _uiState.update { it.copy(isCalculating = true) }
+
             viewModelScope.launch {
-                val intermediate = calculateIntermediateResult(firstOperand!!, pendingOperation!!, current)
+                try {
+                    val intermediate = calculateIntermediateResult(firstOperand!!, pendingOperation!!, current)
 
-                if (intermediate != null) {
-                    firstOperand = intermediate
-                    pendingOperation = newOp
-                    shouldResetExpression = true
-                    val opString = when (newOp) {
-                        is PendingOperation.BuiltIn -> newOp.symbol
-                        is PendingOperation.PluginOp -> newOp.label
-                    }
+                    if (intermediate != null) {
+                        firstOperand = intermediate
+                        pendingOperation = newOp
+                        shouldResetExpression = true
+                        val opString = when (newOp) {
+                            is PendingOperation.BuiltIn -> newOp.symbol
+                            is PendingOperation.PluginOp -> newOp.label
+                        }
 
-                    _uiState.update {
-                        it.copy(
-                            expression = formatResult(intermediate),
-                            result = "${formatResult(intermediate)} $opString ",
-                            error = null
-                        )
+                        _uiState.update {
+                            it.copy(
+                                expression = formatResult(intermediate),
+                                result = "${formatResult(intermediate)} $opString ",
+                                error = null
+                            )
+                        }
+                    } else {
+                        firstOperand = null
+                        pendingOperation = null
+                        shouldResetExpression = true
                     }
-                } else {
-                    firstOperand = null
-                    pendingOperation = null
-                    shouldResetExpression = true
+                } finally {
+                    _uiState.update { it.copy(isCalculating = false) }
                 }
             }
         } else {

@@ -4,6 +4,7 @@ import android.net.Uri
 import com.github.mykolab31.plugincalculator.data.model.CalculationResult
 import com.github.mykolab31.plugincalculator.data.model.Plugin
 import com.github.mykolab31.plugincalculator.plugin.PluginLoadResult
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -15,6 +16,8 @@ class FakePluginRepository(
 
     private val _installedPlugins = MutableStateFlow(initialPlugins)
     override val installedPlugins: StateFlow<List<Plugin>> = _installedPlugins.asStateFlow()
+
+    private var suspensionGate: CompletableDeferred<Unit>? = null
 
     var executeOperationResult: CalculationResult = CalculationResult.Err("not stubbed")
 
@@ -37,12 +40,19 @@ class FakePluginRepository(
         throw NotImplementedError("Not needed for CalculatorViewModel tests")
     }
 
+    fun holdExecution(): CompletableDeferred<Unit> {
+        val gate = CompletableDeferred<Unit>()
+        suspensionGate = gate
+        return gate
+    }
+
     override suspend fun executeOperation(
         plugin: Plugin,
         operationId: String,
         args: List<BigDecimal>
     ): CalculationResult {
         lastExecuteArgs = args
+        suspensionGate?.await()
         return executeOperationResult
     }
 

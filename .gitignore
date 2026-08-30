@@ -1,5 +1,6 @@
 # Gradle and environment settings
 .gradle/
+.kotlin
 local.properties
 
 # IDE settings

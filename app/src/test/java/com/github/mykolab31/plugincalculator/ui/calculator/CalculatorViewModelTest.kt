@@ -11,6 +11,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
+import org.junit.Assert.assertFalse
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -246,6 +247,50 @@ class CalculatorViewModelTest {
             "Expected a 'plugin no longer available' error, got: ${state.error}",
             state.error?.contains("no longer available") == true
         )
+    }
+
+    @Test
+    fun `input is ignored while a plugin calculation is in flight`() {
+        val plugin = testPlugin(arity = OperationArity.UNARY)
+        repository.setPlugins(listOf(plugin))
+        repository.executeOperationResult = CalculationResult.Number(BigDecimal("42"))
+        val gate = repository.holdExecution()
+
+        viewModel.onEvent(CalculatorEvent.NumberPressed("9"))
+        viewModel.onEvent(CalculatorEvent.PluginOperationPressed(plugin, "op"))
+
+        assertTrue(viewModel.uiState.value.isCalculating)
+
+        viewModel.onEvent(CalculatorEvent.NumberPressed("5"))
+        viewModel.onEvent(CalculatorEvent.ClearPressed)
+
+        val stateWhileCalculating = viewModel.uiState.value
+        assertEquals("9", stateWhileCalculating.expression)
+        assertTrue(stateWhileCalculating.isCalculating)
+
+        gate.complete(Unit)
+
+        val finalState = viewModel.uiState.value
+        assertFalse(finalState.isCalculating)
+        assertEquals("42", finalState.expression)
+    }
+
+    @Test
+    fun `isCalculating resets to false even when plugin returns error`() {
+        val plugin = testPlugin(arity = OperationArity.UNARY)
+        repository.setPlugins(listOf(plugin))
+        repository.executeOperationResult = CalculationResult.Err("boom")
+        val gate = repository.holdExecution()
+
+        viewModel.onEvent(CalculatorEvent.NumberPressed("9"))
+        viewModel.onEvent(CalculatorEvent.PluginOperationPressed(plugin, "op"))
+        assertTrue(viewModel.uiState.value.isCalculating)
+
+        gate.complete(Unit)
+
+        val state = viewModel.uiState.value
+        assertFalse(state.isCalculating)
+        assertEquals("boom", state.error)
     }
 
 }
