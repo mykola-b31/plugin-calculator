@@ -87,6 +87,14 @@ class ManifestParser(
             return ManifestParseResult.Error("Manifest must declare at least one operation")
         }
 
+        val operationIds = manifest.operations.map { it.id }
+        val duplicateIds = operationIds.groupingBy { it }.eachCount().filter { it.value > 1 }.keys
+        if (duplicateIds.isNotEmpty()) {
+            return ManifestParseResult.Error(
+                "Duplicate operation id(s) in manifest: ${duplicateIds.joinToString(", ")}"
+            )
+        }
+
         val operations = manifest.operations.map { dto ->
             val arity = OperationArity.fromInputCount(dto.inputs)
                 ?: return ManifestParseResult.Error(

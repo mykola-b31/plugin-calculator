@@ -337,4 +337,50 @@ class ManifestParserTest {
 
         assertTrue(result is ManifestParseResult.Error)
     }
+
+    @Test
+    fun `manifest with duplicate operation ids is rejected`() {
+        val manifestJson = """
+            {
+                "id": "com.example.dup",
+                "name": "Dup",
+                "version": "1.0.0",
+                "description": "Plugin with clashing operation ids",
+                "category": "MATH",
+                "entryFile": "main.lua",
+                "operations": [
+                    { "id": "sin", "label": "sin(x)", "inputs": 1 },
+                    { "id": "sin", "label": "sin again(x)", "inputs": 1 }
+                ]
+            }
+        """.trimIndent()
+
+        val result = ManifestParser().parse(manifestJson)
+
+        assertTrue(result is ManifestParseResult.Error)
+        assertTrue((result as ManifestParseResult.Error).message.contains("sin"))
+    }
+
+    @Test
+    fun `manifest with unique operation ids is accepted`() {
+        val manifestJson = """
+            {
+                "id": "com.example.unique",
+                "name": "Unique",
+                "version": "1.0.0",
+                "description": "Plugin with distinct operation ids",
+                "category": "MATH",
+                "entryFile": "main.lua",
+                "operations": [
+                    { "id": "sin", "label": "sin(x)", "inputs": 1 },
+                    { "id": "cos", "label": "cos(x)", "inputs": 1 }
+                ]
+            }
+        """.trimIndent()
+
+        val result = ManifestParser().parse(manifestJson)
+
+        assertTrue(result is ManifestParseResult.Success)
+        assertEquals(2, (result as ManifestParseResult.Success).plugin.operations.size)
+    }
 }
