@@ -28,30 +28,30 @@ class PluginValidator (
             is ManifestParseResult.Error -> return ValidationResult.Invalid(
                 "Manifest error: ${parseResult.message}"
             )
+
             is ManifestParseResult.Success -> parseResult.plugin
         }
 
-        // level 2 - Syntax
+        // level 2 & 3 - Syntax & Contract
         val globals = LuaSandbox.create()
-        try {
-            globals.load(script, "plugin")
-        } catch (e: LuaError) {
-            return ValidationResult.Invalid("Syntax error in plugin script: ${e.message}")
-        }
-
-        // level 3 - Contract
-        var contractError: String? = null
+        var validationError: String? = null
         val timeoutMessage = LuaTimeoutRunner.runOrTimeoutMessage(VALIDATION_TIMEOUT_SECONDS) {
             try {
-                globals.load(script, "plugin").call()
+                val chunk = globals.load(script, "plugin")
+                try {
+                    chunk.call()
+                } catch (e: LuaError) {
+                    validationError = "Runtime error while loading plugin: ${e.message}"
+                }
             } catch (e: LuaError) {
-                contractError = "Runtime error while loading plugin: ${e.message}"
+                validationError = "Syntax error in plugin script: ${e.message}"
             }
         }
+
         if (timeoutMessage != null) {
             return ValidationResult.Invalid("Plugin took too long to load: $timeoutMessage")
         }
-        contractError?.let { return ValidationResult.Invalid(it) }
+        validationError?.let { return ValidationResult.Invalid(it) }
 
         val executeFunc = globals.get("execute")
         if (executeFunc.isnil()) {
