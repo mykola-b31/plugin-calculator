@@ -1,0 +1,57 @@
+{
+  "id": "com.mykolab31.scimath",
+  "name": "SciMath",
+  "author": "Mykola B.",
+  "version": "1.0.0",
+  "minAppVersion": "1.0.0",
+  "description": "Basic scientific set: constants, factorial, powers, logarithms and combinatorics.",
+  "category": "ARITHMETIC",
+  "entryFile": "plugin.lua",
+  "operations": [
+    {
+      "id": "pi",
+      "label": "π",
+      "inputs": 0
+    },
+    {
+      "id": "e",
+      "label": "e",
+      "inputs": 0
+    },
+    {
+      "id": "factorial",
+      "label": "n!",
+      "inputs": 1
+    },
+    {
+      "id": "sqrt",
+      "label": "√",
+      "inputs": 1
+    },
+    {
+      "id": "abs",
+      "label": "|x|",
+      "inputs": 1
+    },
+    {
+      "id": "power",
+      "label": "^",
+      "inputs": 2
+    },
+    {
+      "id": "mod",
+      "label": "mod",
+      "inputs": 2
+    },
+    {
+      "id": "log",
+      "label": "log",
+      "inputs": 2
+    },
+    {
+      "id": "nCr",
+      "label": "nCr",
+      "inputs": 2
+    }
+  ]
+}
