@@ -87,6 +87,8 @@ end
 
 A plugin can return a plain number, or a table (e.g. `{ type = "matrix", data = {...} }`) for structured results.
 
+> **Note on precision.** The built-in operations (`+ - * /`) use `BigDecimal` throughout and never lose precision. Plugin-computed results, however, pass through Lua's native number type (a 64-bit `double`), so they carry `double`'s ~15-17 significant digit precision rather than `BigDecimal`'s exactness. This is negligible for most operations (trigonometry, statistics, general math) but worth knowing before relying on a plugin for exact decimal arithmetic.
+
 ## Architecture
 
 - **UI:** Jetpack Compose, MVVM (`CalculatorViewModel`, `PluginManagerViewModel`, `PluginDetailViewModel`)
