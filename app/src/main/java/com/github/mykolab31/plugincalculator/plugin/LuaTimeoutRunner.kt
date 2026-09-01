@@ -7,21 +7,18 @@ import java.util.concurrent.TimeoutException
 
 object LuaTimeoutRunner {
 
+    private val executor = Executors.newCachedThreadPool()
+
     fun runOrTimeoutMessage(timeoutSeconds: Long, block: () -> Unit): String? {
-        val executor = Executors.newSingleThreadExecutor()
+        val future = executor.submit(block)
         return try {
-            val future = executor.submit(block)
-            try {
-                future.get(timeoutSeconds, TimeUnit.SECONDS)
-                null
-            } catch (e: TimeoutException) {
-                future.cancel(true)
-                "execution exceeded ${timeoutSeconds}s - likely an infinite loop or excessive computation"
-            } catch (e: ExecutionException) {
-                "execution error: ${e.cause?.message ?: e.message}"
-            }
-        } finally {
-            executor.shutdownNow()
+            future.get(timeoutSeconds, TimeUnit.SECONDS)
+            null
+        } catch (e: TimeoutException) {
+            future.cancel(true)
+            "execution exceeded ${timeoutSeconds}s - likely an infinite loop or excessive computation"
+        } catch (e: ExecutionException) {
+            "execution error: ${e.cause?.message ?: e.message}"
         }
     }
 }
