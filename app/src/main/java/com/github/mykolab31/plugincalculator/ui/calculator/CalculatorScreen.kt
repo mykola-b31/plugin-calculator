@@ -18,6 +18,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -26,8 +27,12 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -36,9 +41,14 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.max
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.github.mykolab31.plugincalculator.R
+import com.github.mykolab31.plugincalculator.data.model.OperationArity
+import com.github.mykolab31.plugincalculator.data.model.Plugin
+import com.github.mykolab31.plugincalculator.data.model.PluginCategory
+import com.github.mykolab31.plugincalculator.data.model.PluginOperation
 import com.github.mykolab31.plugincalculator.data.repository.PluginRepository
 import com.github.mykolab31.plugincalculator.ui.components.ButtonType
 import com.github.mykolab31.plugincalculator.ui.components.CalculatorButton
@@ -148,36 +158,17 @@ fun CalculatorScreenContent(
 
             // Connected plugins operations
             if (uiState.plugins.isNotEmpty()) {
-                IslandCard(
-                    modifier = Modifier.fillMaxWidth(),
-                    contentPadding = 8.dp
-                ) {
-                    LazyRow(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        contentPadding = PaddingValues(horizontal = 8.dp)
-                    ) {
-                        uiState.plugins.forEach { plugin ->
-                            items(plugin.operations) { operation ->
-                                CalculatorButton(
-                                    label = operation.label,
-                                    type = ButtonType.PLUGIN,
-                                    isWide = true,
-                                    onClick = {
-                                        onEvent(
-                                            CalculatorEvent.PluginOperationPressed(
-                                                plugin,
-                                                operation.id
-                                            )
-                                        )
-                                    },
-                                    modifier = Modifier
-                                        .width(80.dp)
-                                        .height(60.dp)
-                                )
-                            }
-                        }
+                PluginOperationsPanel(
+                    plugins = uiState.plugins,
+                    onOperationClick = { plugin, operationId ->
+                        onEvent(
+                            CalculatorEvent.PluginOperationPressed(
+                                plugin,
+                                operationId
+                            )
+                        )
                     }
-                }
+                )
             }
 
             // Main keyboard
@@ -334,6 +325,74 @@ fun CalculatorScreenContent(
     }
 }
 
+@Composable
+private fun PluginOperationsPanel(
+    plugins: List<Plugin>,
+    onOperationClick: (Plugin, String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var selectedPluginId by rememberSaveable { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(plugins.map(Plugin::id)) {
+        if (plugins.none { it.id == selectedPluginId }) {
+            selectedPluginId = plugins.firstOrNull()?.id
+        }
+    }
+
+    val selectedPlugin = plugins.firstOrNull { it.id == selectedPluginId }
+        ?: plugins.firstOrNull()
+        ?: return
+
+    IslandCard(
+        modifier = modifier.fillMaxWidth(),
+        contentPadding = 8.dp
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                contentPadding = PaddingValues(horizontal = 8.dp)
+            ) {
+                items(
+                    items = plugins,
+                    key = Plugin::id
+                ) {
+                    plugin ->
+                    FilterChip(
+                        selected = plugin.id == selectedPlugin.id,
+                        onClick = { selectedPluginId = plugin.id },
+                        label = {
+                            Text(
+                                text = plugin.name,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    )
+                }
+            }
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                contentPadding = PaddingValues(horizontal = 8.dp)
+            ) {
+                items(
+                    items = selectedPlugin.operations,
+                    key = { operation -> "${selectedPlugin.id}:${operation.id}" }
+                ) { operation ->
+                    CalculatorButton(
+                        label = operation.label,
+                        type = ButtonType.PLUGIN,
+                        isWide = true,
+                        onClick = { onOperationClick(selectedPlugin, operation.id) },
+                        modifier = Modifier
+                            .width(80.dp)
+                            .height(60.dp)
+                    )
+                }
+            }
+        }
+    }
+}
+
 @Preview(name = "Light Mode", showBackground = true, showSystemUi = true)
 @Preview(
     name = "Dark Mode",
@@ -346,7 +405,38 @@ fun CalculatorScreenPreview() {
     val mockState = CalculatorUiState(
         expression = "1024×2",
         result = "2048",
-        plugins = emptyList()
+        plugins = listOf(
+            Plugin(
+                id = "math-utilities",
+                name = "Math Utilities",
+                author = "Demo",
+                version = "1.0.0",
+                minAppVersion = "1.0.0",
+                description = "Common mathematical operations",
+                category = PluginCategory.ARITHMETIC,
+                entryFile = "main.lua",
+                operations = listOf(
+                    PluginOperation("square", "x²", OperationArity.UNARY),
+                    PluginOperation("sqrt", "√x", OperationArity.UNARY),
+                    PluginOperation("average", "avg", OperationArity.BINARY)
+                )
+            ),
+            Plugin(
+                id = "trigonometry",
+                name = "Trigonometry",
+                author = "Demo",
+                version = "1.0.0",
+                minAppVersion = "1.0.0",
+                description = "Trigonometric operations",
+                category = PluginCategory.TRIGONOMETRY,
+                entryFile = "main.lua",
+                operations = listOf(
+                    PluginOperation("sin", "sin", OperationArity.UNARY),
+                    PluginOperation("cos", "cos", OperationArity.UNARY),
+                    PluginOperation("tan", "tan", OperationArity.UNARY)
+                )
+            )
+        )
     )
 
     val useDarkTheme = isSystemInDarkTheme()
