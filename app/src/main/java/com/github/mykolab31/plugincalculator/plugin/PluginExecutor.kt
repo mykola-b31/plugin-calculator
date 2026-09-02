@@ -5,11 +5,13 @@ import org.luaj.vm2.LuaError
 import org.luaj.vm2.LuaTable
 import org.luaj.vm2.LuaValue
 import java.math.BigDecimal
+import kotlin.math.abs
 
 class PluginExecutor {
 
     companion object {
         private const val EXECUTION_TIMEOUT_SECONDS = 3L
+        private const val MAX_SAFE_INTEGER = 9_007_199_254_740_991.0
     }
 
     /**
@@ -57,17 +59,31 @@ class PluginExecutor {
     }
 
     /**
-     * Converts the LuaValur returned by the plugin
+     * Converts the LuaValue returned by the plugin
      * to a CalculationResult for display in the UI
      */
     private fun convertResult(result: LuaValue): PluginExecutionResult {
         return when {
-            result.isnumber() -> PluginExecutionResult.Success(
-                CalculationResult.Number(BigDecimal.valueOf(result.todouble()))
-            )
+            result.isnumber() -> convertNumberResult(result.todouble())
             result.istable() -> convertTableResult(result.checktable())
             else -> PluginExecutionResult.Error("Unsupported return type from plugin")
         }
+    }
+
+    private fun convertNumberResult(value: Double): PluginExecutionResult {
+        if (!value.isFinite()) {
+            return PluginExecutionResult.Error("Plugin returned a non-finite number")
+        }
+
+        val decimalValue = BigDecimal.valueOf(value)
+
+        val isApproximate = abs(value) > MAX_SAFE_INTEGER || BigDecimal(value).compareTo(decimalValue) != 0
+        return PluginExecutionResult.Success(
+            CalculationResult.Number(
+                value = decimalValue,
+                isApproximate = isApproximate
+            )
+        )
     }
 
     private fun convertTableResult(table: LuaTable): PluginExecutionResult {
@@ -90,7 +106,7 @@ class PluginExecutor {
 
 }
 
-sealed class PluginExecutionResult{
+sealed class PluginExecutionResult {
     data class Success(val result: CalculationResult) : PluginExecutionResult()
     data class Error(val message: String) : PluginExecutionResult()
 }

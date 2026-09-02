@@ -175,6 +175,11 @@ private fun CalculatorDisplay(
     val copyActionLabel = stringResource(
         R.string.cd_copy_calculator_value
     )
+    val displayedExpression = uiState.expression
+        .ifEmpty { "0" }
+        .let { expression ->
+            if (uiState.isExpressionApproximate) "≈ $expression" else expression
+        }
 
     val copyValue = when {
         uiState.error != null -> null
@@ -183,7 +188,7 @@ private fun CalculatorDisplay(
             uiState.result.takeIf { it.isNotBlank() }
 
         else ->
-            uiState.expression.ifBlank { "0" }
+            displayedExpression
     }
 
     IslandCard(
@@ -254,10 +259,11 @@ private fun CalculatorDisplay(
             Spacer(modifier = Modifier.height(6.dp))
 
             AutoScrollingText(
-                text = uiState.expression.ifEmpty { "0" },
+                text = displayedExpression,
                 fontSize = 48.sp,
                 fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onSurface
+                color = MaterialTheme.colorScheme.onSurface,
+                scrollToStart = uiState.scrollExpressionToStart
             )
         }
     }
@@ -269,12 +275,15 @@ private fun AutoScrollingText(
     fontSize: TextUnit,
     color: Color,
     modifier: Modifier = Modifier,
-    fontWeight: FontWeight? = null
+    fontWeight: FontWeight? = null,
+    scrollToStart: Boolean = false
 ) {
     val scrollState = rememberScrollState()
 
-    LaunchedEffect(text, scrollState.maxValue) {
-        scrollState.scrollTo(scrollState.maxValue)
+    LaunchedEffect(text, scrollState.maxValue, scrollToStart) {
+        scrollState.scrollTo(
+            if (scrollToStart) 0 else scrollState.maxValue
+        )
     }
 
     Box(

@@ -18,6 +18,8 @@ import java.math.RoundingMode
 data class CalculatorUiState(
     val expression: String = "",
     val result: String = "",
+    val isExpressionApproximate: Boolean = false,
+    val scrollExpressionToStart: Boolean = false,
     val error: String? = null,
     val plugins: List<Plugin> = emptyList(),
     val isLoading: Boolean = false,
@@ -49,12 +51,14 @@ class CalculatorViewModel(
 
     companion object {
         private const val MAX_INPUT_LENGTH = 15
+        private const val SCIENTIFIC_NOTATION_MIN_EXPONENT = 15
     }
 
     private val _uiState = MutableStateFlow(CalculatorUiState(isLoading = false))
     val uiState: StateFlow<CalculatorUiState> = _uiState.asStateFlow()
 
     private var firstOperand: BigDecimal? = null
+    private var firstOperandIsApproximate = false
     private var pendingOperation: PendingOperation? = null
     private var shouldResetExpression = false
 
@@ -92,12 +96,22 @@ class CalculatorViewModel(
         _uiState.update { state ->
             if (shouldResetExpression) {
                 shouldResetExpression = false
-                state.copy(expression = digit, error = null)
+                state.copy(
+                    expression = digit,
+                    isExpressionApproximate = false,
+                    scrollExpressionToStart = false,
+                    error = null
+                )
             } else {
                 if (state.expression.length >= MAX_INPUT_LENGTH) return@update state
 
                 val currentExpression = if (state.expression == "0") digit else state.expression + digit
-                state.copy(expression = currentExpression, error = null)
+                state.copy(
+                    expression = currentExpression,
+                    isExpressionApproximate = false,
+                    scrollExpressionToStart = false,
+                    error = null
+                )
             }
         }
     }
@@ -106,11 +120,21 @@ class CalculatorViewModel(
         _uiState.update { state ->
             if (shouldResetExpression) {
                 shouldResetExpression = false
-                return@update state.copy(expression = "0.", error = null)
+                return@update state.copy(
+                    expression = "0.",
+                    isExpressionApproximate = false,
+                    scrollExpressionToStart = false,
+                    error = null
+                )
             }
             if (state.expression.contains(".")) return@update state
 
-            state.copy(expression = state.expression + ".", error = null)
+            state.copy(
+                expression = state.expression + ".",
+                isExpressionApproximate = false,
+                scrollExpressionToStart = false,
+                error = null
+            )
         }
     }
 
@@ -129,12 +153,14 @@ class CalculatorViewModel(
     }
 
     private fun handleEquals() {
-        val current = _uiState.value.expression.toBigDecimalOrNull()
+        val currentState = _uiState.value
+        val current = currentState.expression.toBigDecimalOrNull()
         if (current == null) {
             setError("Invalid number")
             return
         }
         val first = firstOperand ?: return
+        val firstIsApproximate = firstOperandIsApproximate
         val operation = pendingOperation ?: return
 
         shouldResetExpression = true
@@ -142,7 +168,12 @@ class CalculatorViewModel(
 
         viewModelScope.launch {
             try {
-                val finalResult = calculateIntermediateResult(first, operation, current)
+                val finalResult = calculateIntermediateResult(
+                    first = first,
+                    firstIsApproximate = firstIsApproximate,
+                    operation = operation,
+                    current = current,
+                    currentIsApproximate = currentState.isExpressionApproximate)
 
                 if (finalResult != null) {
                     val opString = when (operation) {
@@ -152,14 +183,17 @@ class CalculatorViewModel(
 
                     _uiState.update { state ->
                         state.copy(
-                            expression = formatResult(finalResult),
-                            result = "${formatResult(first)} $opString ${formatResult(current)} =",
+                            expression = formatResult(finalResult.value),
+                            result = "${formatDisplayResult(first, firstIsApproximate)} $opString ${formatDisplayResult(current, currentState.isExpressionApproximate)} =",
+                            isExpressionApproximate = finalResult.isApproximate,
+                            scrollExpressionToStart = true,
                             error = null
                         )
                     }
                 }
 
                 firstOperand = null
+                firstOperandIsApproximate = false
                 pendingOperation = null
             } finally {
                 _uiState.update { it.copy(isCalculating = false) }
@@ -169,6 +203,7 @@ class CalculatorViewModel(
 
     private fun handleClear() {
         firstOperand = null
+        firstOperandIsApproximate = false
         pendingOperation = null
         shouldResetExpression = false
         _uiState.update { CalculatorUiState(plugins = it.plugins) }
@@ -181,7 +216,12 @@ class CalculatorViewModel(
             val newExpr = state.expression.dropLast(1)
             val finalExpr = if (newExpr.isEmpty() || newExpr == "-") "0" else newExpr
 
-            state.copy(expression = finalExpr, error = null)
+            state.copy(
+                expression = finalExpr,
+                isExpressionApproximate = false,
+                scrollExpressionToStart = false,
+                error = null
+            )
         }
     }
 
@@ -198,7 +238,8 @@ class CalculatorViewModel(
             }
 
             OperationArity.UNARY -> {
-                val current = _uiState.value.expression.toBigDecimalOrNull()
+                val currentState = _uiState.value
+                val current = currentState.expression.toBigDecimalOrNull()
                 if (current == null) {
                     setError("Invalid number")
                     return
@@ -208,7 +249,11 @@ class CalculatorViewModel(
                 viewModelScope.launch {
                     try {
                         val result = repository.executeOperation(plugin, operationId, listOf(current))
-                        handleCalculationResult(result, operation.label, current)
+                        handleCalculationResult(
+                            result,
+                            operation.label,
+                            current,
+                            inputIsApproximate = currentState.isExpressionApproximate)
                     } finally {
                         _uiState.update { it.copy(isCalculating = false) }
                     }
@@ -233,7 +278,8 @@ class CalculatorViewModel(
     private fun handleCalculationResult(
         result: CalculationResult,
         operationLabel: String,
-        input: BigDecimal
+        input: BigDecimal,
+        inputIsApproximate: Boolean
     ) {
         when (result) {
             is CalculationResult.Number -> {
@@ -241,7 +287,9 @@ class CalculatorViewModel(
                 _uiState.update { state ->
                     state.copy(
                         expression = formatResult(result.value),
-                        result = "$operationLabel(${formatResult(input)}) = ",
+                        result = "$operationLabel(${formatDisplayResult(input, inputIsApproximate)}) = ",
+                        isExpressionApproximate = result.isApproximate || inputIsApproximate,
+                        scrollExpressionToStart = true,
                         error = null
                     )
                 }
@@ -252,6 +300,8 @@ class CalculatorViewModel(
                     state.copy(
                         expression = "[matrix]",
                         result = formatMatrix(result.rows),
+                        isExpressionApproximate = false,
+                        scrollExpressionToStart = true,
                         error = null
                     )
                 }
@@ -272,6 +322,8 @@ class CalculatorViewModel(
                     state.copy(
                         expression = formatResult(result.value),
                         result = "$operationLabel = ",
+                        isExpressionApproximate = result.isApproximate,
+                        scrollExpressionToStart = true,
                         error = null
                     )
                 }
@@ -281,6 +333,8 @@ class CalculatorViewModel(
                     state.copy(
                         expression = "[matrix]",
                         result = formatMatrix(result.rows),
+                        isExpressionApproximate = false,
+                        scrollExpressionToStart = true,
                         error = null
                     )
                 }
@@ -308,7 +362,8 @@ class CalculatorViewModel(
     }
 
     private fun processBinaryOperation(newOp: PendingOperation) {
-        val current = _uiState.value.expression.toBigDecimalOrNull()
+        val currentState = _uiState.value
+        val current = currentState.expression.toBigDecimalOrNull()
         if (current == null) {
             setError("Invalid number")
             return
@@ -319,10 +374,16 @@ class CalculatorViewModel(
 
             viewModelScope.launch {
                 try {
-                    val intermediate = calculateIntermediateResult(firstOperand!!, pendingOperation!!, current)
+                    val intermediate = calculateIntermediateResult(
+                        first = firstOperand!!,
+                        firstIsApproximate = firstOperandIsApproximate,
+                        operation = pendingOperation!!,
+                        current = current,
+                        currentIsApproximate = currentState.isExpressionApproximate)
 
                     if (intermediate != null) {
-                        firstOperand = intermediate
+                        firstOperand = intermediate.value
+                        firstOperandIsApproximate = intermediate.isApproximate
                         pendingOperation = newOp
                         shouldResetExpression = true
                         val opString = when (newOp) {
@@ -332,13 +393,16 @@ class CalculatorViewModel(
 
                         _uiState.update {
                             it.copy(
-                                expression = formatResult(intermediate),
-                                result = "${formatResult(intermediate)} $opString ",
+                                expression = formatResult(intermediate.value),
+                                result = "${formatDisplayResult(intermediate.value, intermediate.isApproximate)} $opString ",
+                                isExpressionApproximate = intermediate.isApproximate,
+                                scrollExpressionToStart = true,
                                 error = null
                             )
                         }
                     } else {
                         firstOperand = null
+                        firstOperandIsApproximate = false
                         pendingOperation = null
                         shouldResetExpression = true
                     }
@@ -348,6 +412,7 @@ class CalculatorViewModel(
             }
         } else {
             firstOperand = current
+            firstOperandIsApproximate = currentState.isExpressionApproximate
             pendingOperation = newOp
             shouldResetExpression = true
 
@@ -357,20 +422,27 @@ class CalculatorViewModel(
             }
 
             _uiState.update { state ->
-                state.copy(result = "${formatResult(current)} $opString ", error = null)
+                state.copy(result = "${formatDisplayResult(current, currentState.isExpressionApproximate)} $opString ", error = null)
             }
         }
     }
 
     private suspend fun calculateIntermediateResult(
         first: BigDecimal,
+        firstIsApproximate: Boolean,
         operation: PendingOperation,
-        current: BigDecimal
-    ): BigDecimal? {
+        current: BigDecimal,
+        currentIsApproximate: Boolean
+    ): CalculationResult.Number? {
+        val hasApproximateInput = firstIsApproximate || currentIsApproximate
+
         return when (operation) {
             is PendingOperation.BuiltIn -> {
                 try {
-                    calculateBuiltIn(first, operation.symbol, current)
+                    CalculationResult.Number(
+                        value = calculateBuiltIn(first, operation.symbol, current),
+                        isApproximate = hasApproximateInput
+                    )
                 } catch (_: ArithmeticException) {
                     _uiState.update { it.copy(error = builtInErrorMessage(operation.symbol, current)) }
                     null
@@ -388,7 +460,7 @@ class CalculatorViewModel(
                         listOf(first, current)
                     )
                     when (result) {
-                        is CalculationResult.Number -> result.value
+                        is CalculationResult.Number -> result.copy(isApproximate = result.isApproximate || hasApproximateInput)
                         is CalculationResult.Matrix -> {
                             _uiState.update { it.copy(error = "Cannot chain matrix operations") }
                             null
@@ -405,7 +477,23 @@ class CalculatorViewModel(
     }
 
     private fun formatResult(value: BigDecimal): String {
-        return value.stripTrailingZeros().toPlainString()
+        val normalized = value.stripTrailingZeros()
+        val exponent = normalized.precision() - normalized.scale() - 1
+
+        if (exponent >= SCIENTIFIC_NOTATION_MIN_EXPONENT) {
+            val significand = normalized
+                .movePointLeft(exponent)
+                .stripTrailingZeros()
+                .toPlainString()
+            return "${significand}E+$exponent"
+        }
+
+        return normalized.toPlainString()
+    }
+
+    private fun formatDisplayResult(value: BigDecimal, isApproximate: Boolean): String {
+        val formatted = formatResult(value)
+        return if (isApproximate) "≈ $formatted" else formatted
     }
 
     private fun builtInErrorMessage(symbol: String, divisor: BigDecimal): String {
