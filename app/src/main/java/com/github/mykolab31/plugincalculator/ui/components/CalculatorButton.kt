@@ -2,7 +2,6 @@ package com.github.mykolab31.plugincalculator.ui.components
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -14,6 +13,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
@@ -28,7 +28,6 @@ enum class ButtonType {
 fun CalculatorButton(
     label: String,
     modifier: Modifier = Modifier,
-    isWide: Boolean = false,
     type: ButtonType = ButtonType.NUMBER,
     onClick: () -> Unit
 ) {
@@ -46,16 +45,16 @@ fun CalculatorButton(
         ButtonType.PLUGIN -> MaterialTheme.colorScheme.onTertiaryContainer
     }
 
+    val labelFontSize = if (type == ButtonType.PLUGIN) 20.sp else 26.sp
+
     Surface(
         modifier = modifier
-            .padding(4.dp)
-            .then(if (!isWide) Modifier.aspectRatio(1f) else Modifier)
             .clip(RoundedCornerShape(16.dp))
             .clickable { onClick() },
         shape = RoundedCornerShape(16.dp),
         color = backgroundColor,
-        tonalElevation = 2.dp,
-        shadowElevation = 2.dp
+        tonalElevation = 1.dp,
+        shadowElevation = 1.dp
     ) {
         Box(
             contentAlignment = Alignment.Center,
@@ -63,9 +62,12 @@ fun CalculatorButton(
         ) {
             Text(
                 text = label,
-                fontSize = 28.sp,
+                fontSize = labelFontSize,
                 fontWeight = FontWeight.Medium,
-                color = textColor
+                color = textColor,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(horizontal = 4.dp)
             )
         }
     }

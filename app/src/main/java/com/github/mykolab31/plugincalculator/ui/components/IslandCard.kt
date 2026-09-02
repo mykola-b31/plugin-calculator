@@ -17,12 +17,13 @@ fun IslandCard(
     modifier: Modifier = Modifier,
     color: Color = MaterialTheme.colorScheme.surfaceContainer,
     elevation: Dp = 6.dp,
+    cornerRadius: Dp = 24.dp,
     contentPadding: Dp = 16.dp,
     content: @Composable BoxScope.() -> Unit
 ) {
     Surface(
         modifier = modifier,
-        shape = RoundedCornerShape(24.dp),
+        shape = RoundedCornerShape(cornerRadius),
         color = color,
         tonalElevation = elevation,
         shadowElevation = elevation / 2
