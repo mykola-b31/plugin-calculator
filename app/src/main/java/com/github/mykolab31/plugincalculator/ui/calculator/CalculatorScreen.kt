@@ -1,8 +1,13 @@
 package com.github.mykolab31.plugincalculator.ui.calculator
 
 import android.content.res.Configuration
+import android.widget.Toast
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -18,6 +23,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.FilterChip
@@ -37,11 +43,16 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -119,7 +130,6 @@ fun CalculatorScreenContent(
         }
     }
 }
-
 @Composable
 private fun CalculatorHeader(
     onNavigateToPlugins: () -> Unit,
@@ -150,15 +160,54 @@ private fun CalculatorHeader(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun CalculatorDisplay(
     uiState: CalculatorUiState,
     modifier: Modifier = Modifier
 ) {
+    val clipboardManager = LocalClipboardManager.current
+    val context = LocalContext.current
+
+    val copiedMessage = stringResource(
+        R.string.calculator_value_copied
+    )
+    val copyActionLabel = stringResource(
+        R.string.cd_copy_calculator_value
+    )
+
+    val copyValue = when {
+        uiState.error != null -> null
+
+        uiState.expression == "[matrix]" ->
+            uiState.result.takeIf { it.isNotBlank() }
+
+        else ->
+            uiState.expression.ifBlank { "0" }
+    }
+
     IslandCard(
         modifier = modifier
             .fillMaxWidth()
-            .heightIn(min = 120.dp),
+            .heightIn(min = 120.dp)
+            .combinedClickable(
+                enabled = copyValue != null,
+                onClick = {},
+                onLongClickLabel = copyActionLabel,
+                onLongClick = {
+                    copyValue?.let { value ->
+                        clipboardManager.setText(
+                            AnnotatedString(value)
+                        )
+
+                        Toast.makeText(
+                            context,
+                            copiedMessage,
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                }
+            ),
         elevation = 4.dp,
         cornerRadius = 20.dp,
         contentPadding = 20.dp
@@ -168,32 +217,79 @@ private fun CalculatorDisplay(
             verticalArrangement = Arrangement.Bottom,
             horizontalAlignment = Alignment.End
         ) {
-            Text(
-                text = uiState.error ?: uiState.result,
-                fontSize = 24.sp,
-                color = if (uiState.error != null)
-                    MaterialTheme.colorScheme.error
-                else
-                    MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-                textAlign = TextAlign.End,
-                modifier = Modifier.fillMaxWidth()
-            )
+            when {
+                uiState.error != null -> {
+                    Text(
+                        text = uiState.error,
+                        fontSize = 24.sp,
+                        color = MaterialTheme.colorScheme.error,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        textAlign = TextAlign.End,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+
+                uiState.result.contains('\n') -> {
+                    Text(
+                        text = uiState.result,
+                        fontSize = 24.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        textAlign = TextAlign.End,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+
+                else -> {
+                    AutoScrollingText(
+                        text = uiState.result,
+                        fontSize = 24.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
 
             Spacer(modifier = Modifier.height(6.dp))
 
-            Text(
+            AutoScrollingText(
                 text = uiState.expression.ifEmpty { "0" },
                 fontSize = 48.sp,
                 fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                textAlign = TextAlign.End,
-                modifier = Modifier.fillMaxWidth()
+                color = MaterialTheme.colorScheme.onSurface
             )
         }
+    }
+}
+
+@Composable
+private fun AutoScrollingText(
+    text: String,
+    fontSize: TextUnit,
+    color: Color,
+    modifier: Modifier = Modifier,
+    fontWeight: FontWeight? = null
+) {
+    val scrollState = rememberScrollState()
+
+    LaunchedEffect(text, scrollState.maxValue) {
+        scrollState.scrollTo(scrollState.maxValue)
+    }
+
+    Box(
+        modifier = modifier.fillMaxWidth(),
+        contentAlignment = Alignment.CenterEnd
+    ) {
+        Text(
+            text = text,
+            fontSize = fontSize,
+            fontWeight = fontWeight,
+            color = color,
+            maxLines = 1,
+            softWrap = false,
+            modifier = Modifier.horizontalScroll(scrollState)
+        )
     }
 }
 
