@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
@@ -26,6 +27,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -39,6 +41,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -47,6 +50,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -65,6 +70,9 @@ import com.github.mykolab31.plugincalculator.data.repository.PluginRepository
 import com.github.mykolab31.plugincalculator.ui.components.ButtonType
 import com.github.mykolab31.plugincalculator.ui.components.CalculatorButton
 import com.github.mykolab31.plugincalculator.ui.components.IslandCard
+import kotlinx.coroutines.delay
+
+private const val CALCULATION_INDICATOR_DELAY_MS = 200L
 
 @Composable
 fun CalculatorScreen(
@@ -115,6 +123,7 @@ fun CalculatorScreenContent(
             if (uiState.plugins.isNotEmpty()) {
                 PluginOperationsPanel(
                     plugins = uiState.plugins,
+                    enabled = !uiState.isCalculating,
                     onOperationClick = { plugin, operationId ->
                         onEvent(
                             CalculatorEvent.PluginOperationPressed(
@@ -126,10 +135,14 @@ fun CalculatorScreenContent(
                 )
             }
 
-            CalculatorKeyboard(onEvent = onEvent)
+            CalculatorKeyboard(
+                onEvent = onEvent,
+                enabled = !uiState.isCalculating
+            )
         }
     }
 }
+
 @Composable
 private fun CalculatorHeader(
     onNavigateToPlugins: () -> Unit,
@@ -168,7 +181,20 @@ private fun CalculatorDisplay(
 ) {
     val clipboardManager = LocalClipboardManager.current
     val context = LocalContext.current
+    var showCalculationIndicator by remember { mutableStateOf(false) }
 
+    LaunchedEffect(uiState.isCalculating) {
+        if (uiState.isCalculating) {
+            delay(CALCULATION_INDICATOR_DELAY_MS)
+            showCalculationIndicator = true
+        } else {
+            showCalculationIndicator = false
+        }
+    }
+
+    val calculatingDescription = stringResource(
+        R.string.cd_calculation_in_progress
+    )
     val copiedMessage = stringResource(
         R.string.calculator_value_copied
     )
@@ -217,6 +243,18 @@ private fun CalculatorDisplay(
         cornerRadius = 20.dp,
         contentPadding = 20.dp
     ) {
+        if (showCalculationIndicator) {
+            CircularProgressIndicator(
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .size(28.dp)
+                    .semantics {
+                        contentDescription = calculatingDescription
+                    },
+                strokeWidth = 3.dp
+            )
+        }
+
         Column(
             modifier = Modifier.fillMaxSize(),
             verticalArrangement = Arrangement.Bottom,
@@ -306,6 +344,7 @@ private fun AutoScrollingText(
 private fun PluginOperationsPanel(
     plugins: List<Plugin>,
     onOperationClick: (Plugin, String) -> Unit,
+    enabled: Boolean,
     modifier: Modifier = Modifier
 ) {
     var selectedPluginId by rememberSaveable { mutableStateOf<String?>(null) }
@@ -361,6 +400,7 @@ private fun PluginOperationsPanel(
                     CalculatorButton(
                         label = operation.label,
                         type = ButtonType.PLUGIN,
+                        enabled = enabled,
                         onClick = { onOperationClick(selectedPlugin, operation.id) },
                         modifier = Modifier
                             .width(80.dp)
@@ -375,6 +415,7 @@ private fun PluginOperationsPanel(
 @Composable
 private fun CalculatorKeyboard(
     onEvent: (CalculatorEvent) -> Unit,
+    enabled: Boolean,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -388,21 +429,25 @@ private fun CalculatorKeyboard(
             CalculatorKey(
                 label = "AC",
                 type = ButtonType.ACTION,
+                enabled = enabled,
                 onClick = { onEvent(CalculatorEvent.ClearPressed) }
             )
             CalculatorKey(
                 label = "⌫",
                 type = ButtonType.ACTION,
+                enabled = enabled,
                 onClick = { onEvent(CalculatorEvent.BackspacePressed) }
             )
             CalculatorKey(
                 label = "+/-",
                 type = ButtonType.OPERATION,
+                enabled = enabled,
                 onClick = { onEvent(CalculatorEvent.NegatePressed) }
             )
             CalculatorKey(
                 label = "÷",
                 type = ButtonType.OPERATION,
+                enabled = enabled,
                 onClick = { onEvent(CalculatorEvent.OperationPressed("/")) }
             )
         }
@@ -411,18 +456,19 @@ private fun CalculatorKeyboard(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            CalculatorKey("7") {
+            CalculatorKey("7", enabled = enabled) {
                 onEvent(CalculatorEvent.NumberPressed("7"))
             }
-            CalculatorKey("8") {
+            CalculatorKey("8", enabled = enabled) {
                 onEvent(CalculatorEvent.NumberPressed("8"))
             }
-            CalculatorKey("9") {
+            CalculatorKey("9", enabled = enabled) {
                 onEvent(CalculatorEvent.NumberPressed("9"))
             }
             CalculatorKey(
                 label = "×",
                 type = ButtonType.OPERATION,
+                enabled = enabled,
                 onClick = { onEvent(CalculatorEvent.OperationPressed("*")) }
             )
         }
@@ -431,18 +477,19 @@ private fun CalculatorKeyboard(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            CalculatorKey("4") {
+            CalculatorKey("4", enabled = enabled) {
                 onEvent(CalculatorEvent.NumberPressed("4"))
             }
-            CalculatorKey("5") {
+            CalculatorKey("5", enabled = enabled) {
                 onEvent(CalculatorEvent.NumberPressed("5"))
             }
-            CalculatorKey("6") {
+            CalculatorKey("6", enabled = enabled) {
                 onEvent(CalculatorEvent.NumberPressed("6"))
             }
             CalculatorKey(
                 label = "-",
                 type = ButtonType.OPERATION,
+                enabled = enabled,
                 onClick = { onEvent(CalculatorEvent.OperationPressed("-")) }
             )
         }
@@ -451,18 +498,19 @@ private fun CalculatorKeyboard(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            CalculatorKey("1") {
+            CalculatorKey("1", enabled = enabled) {
                 onEvent(CalculatorEvent.NumberPressed("1"))
             }
-            CalculatorKey("2") {
+            CalculatorKey("2", enabled = enabled) {
                 onEvent(CalculatorEvent.NumberPressed("2"))
             }
-            CalculatorKey("3") {
+            CalculatorKey("3", enabled = enabled) {
                 onEvent(CalculatorEvent.NumberPressed("3"))
             }
             CalculatorKey(
                 label = "+",
                 type = ButtonType.OPERATION,
+                enabled = enabled,
                 onClick = { onEvent(CalculatorEvent.OperationPressed("+")) }
             )
         }
@@ -474,14 +522,16 @@ private fun CalculatorKeyboard(
             CalculatorKey(
                 label = "0",
                 weight = 2f,
+                enabled = enabled,
                 onClick = { onEvent(CalculatorEvent.NumberPressed("0")) }
             )
-            CalculatorKey(".") {
+            CalculatorKey(".", enabled = enabled) {
                 onEvent(CalculatorEvent.DecimalPressed)
             }
             CalculatorKey(
                 label = "=",
                 type = ButtonType.OPERATION,
+                enabled = enabled,
                 onClick = { onEvent(CalculatorEvent.EqualsPressed) }
             )
         }
@@ -493,11 +543,13 @@ private fun RowScope.CalculatorKey(
     label: String,
     type: ButtonType = ButtonType.NUMBER,
     weight: Float = 1f,
+    enabled: Boolean = true,
     onClick: () -> Unit
 ) {
     CalculatorButton(
         label = label,
         type = type,
+        enabled = enabled,
         onClick = onClick,
         modifier = Modifier
             .weight(weight)

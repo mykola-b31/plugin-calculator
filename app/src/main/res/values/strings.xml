@@ -4,6 +4,7 @@
     <!-- Calculator screen -->
     <string name="calculator_title">Modular Calc</string>
     <string name="cd_manage_plugins">Manage plugins</string>
+    <string name="cd_calculation_in_progress">Calculation in progress</string>
     <string name="cd_copy_calculator_value">Copy current value</string>
     <string name="calculator_value_copied">Copied to clipboard</string>
 

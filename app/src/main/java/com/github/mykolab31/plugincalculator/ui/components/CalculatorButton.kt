@@ -29,6 +29,7 @@ fun CalculatorButton(
     label: String,
     modifier: Modifier = Modifier,
     type: ButtonType = ButtonType.NUMBER,
+    enabled: Boolean = true,
     onClick: () -> Unit
 ) {
     val backgroundColor = when (type) {
@@ -50,7 +51,10 @@ fun CalculatorButton(
     Surface(
         modifier = modifier
             .clip(RoundedCornerShape(16.dp))
-            .clickable { onClick() },
+            .clickable(
+                enabled = enabled,
+                onClick = onClick
+            ),
         shape = RoundedCornerShape(16.dp),
         color = backgroundColor,
         tonalElevation = 1.dp,
