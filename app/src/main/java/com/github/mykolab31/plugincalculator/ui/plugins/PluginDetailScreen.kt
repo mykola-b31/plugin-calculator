@@ -19,6 +19,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -29,6 +30,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.darkColorScheme
@@ -37,6 +39,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -54,7 +59,7 @@ import com.github.mykolab31.plugincalculator.data.repository.PluginRepository
 import com.github.mykolab31.plugincalculator.ui.components.IslandCard
 
 @Composable
-fun PluginDetailScreen (
+fun PluginDetailScreen(
     pluginId: String,
     repository: PluginRepository,
     onNavigateBack: () -> Unit,
@@ -89,13 +94,15 @@ fun PluginDetailScreenContent(
     onUninstallClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    var showDeleteConfirmation by rememberSaveable { mutableStateOf(false) }
+
     Scaffold(
         modifier = modifier.fillMaxSize(),
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.plugin_detail_title)) },
                 navigationIcon = {
-                    IconButton( onClick = onNavigateBack) {
+                    IconButton(onClick = onNavigateBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = stringResource(R.string.cd_back)
@@ -258,7 +265,8 @@ fun PluginDetailScreenContent(
 
                         Spacer(modifier = Modifier.height(8.dp))
                         Button(
-                            onClick = onUninstallClick,
+                            onClick = { showDeleteConfirmation = true },
+                            enabled = !uiState.isUninstalling,
                             modifier = Modifier.fillMaxWidth(),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = MaterialTheme.colorScheme.errorContainer,
@@ -266,16 +274,74 @@ fun PluginDetailScreenContent(
                             ),
                             shape = RoundedCornerShape(16.dp)
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.Delete,
-                                contentDescription = null,
-                                modifier = Modifier.padding(end = 8.dp)
+                            if (uiState.isUninstalling) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier
+                                        .padding(end = 8.dp)
+                                        .width(18.dp)
+                                        .height(18.dp),
+                                    color = MaterialTheme.colorScheme.onErrorContainer,
+                                    strokeWidth = 2.dp
+                                )
+                            } else {
+                                Icon(
+                                    imageVector = Icons.Default.Delete,
+                                    contentDescription = null,
+                                    modifier = Modifier.padding(end = 8.dp)
+                                )
+                            }
+                            Text(
+                                stringResource(
+                                    if (uiState.isUninstalling) {
+                                        R.string.action_deleting_plugin
+                                    } else {
+                                        R.string.action_delete_plugin
+                                    }
+                                )
                             )
-                            Text(stringResource(R.string.action_delete_plugin))
                         }
                     }
                 }
             }
+        }
+    }
+
+    if (showDeleteConfirmation) {
+        val pluginName = uiState.plugin?.name
+
+        if (pluginName != null) {
+            AlertDialog(
+                onDismissRequest = { showDeleteConfirmation = false },
+                title = {
+                    Text(
+                        stringResource(
+                            R.string.plugin_delete_dialog_title,
+                            pluginName
+                        )
+                    )
+                },
+                text = {
+                    Text(stringResource(R.string.plugin_delete_dialog_message))
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            showDeleteConfirmation = false
+                            onUninstallClick()
+                        },
+                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                    ) {
+                        Text(stringResource(R.string.action_delete))
+                    }
+                },
+                dismissButton = {
+                    TextButton(
+                        onClick = { showDeleteConfirmation = false }
+                    ) {
+                        Text(stringResource(R.string.action_cancel))
+                    }
+                }
+            )
         }
     }
 }

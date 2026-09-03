@@ -33,4 +33,8 @@
     <string name="plugin_operations_header">Available operations</string>
     <string name="plugin_operation_id_label">ID: %1$s</string>
     <string name="action_delete_plugin">Delete plugin</string>
+    <string name="action_deleting_plugin">Deleting plugin…</string>
+    <string name="action_delete">Delete</string>
+    <string name="plugin_delete_dialog_title">Delete “%1$s”?</string>
+    <string name="plugin_delete_dialog_message">This plugin and its files will be permanently removed.</string>
 </resources>
