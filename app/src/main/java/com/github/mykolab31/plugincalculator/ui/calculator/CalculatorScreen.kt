@@ -2,8 +2,6 @@ package com.github.mykolab31.plugincalculator.ui.calculator
 
 import android.content.res.Configuration
 import android.widget.Toast
-import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
@@ -17,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
@@ -49,6 +48,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -173,7 +173,6 @@ private fun CalculatorHeader(
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun CalculatorDisplay(
     uiState: CalculatorUiState,
@@ -220,25 +219,7 @@ private fun CalculatorDisplay(
     IslandCard(
         modifier = modifier
             .fillMaxWidth()
-            .heightIn(min = 120.dp)
-            .combinedClickable(
-                enabled = copyValue != null,
-                onClick = {},
-                onLongClickLabel = copyActionLabel,
-                onLongClick = {
-                    copyValue?.let { value ->
-                        clipboardManager.setText(
-                            AnnotatedString(value)
-                        )
-
-                        Toast.makeText(
-                            context,
-                            copiedMessage,
-                            Toast.LENGTH_SHORT
-                        ).show()
-                    }
-                }
-            ),
+            .heightIn(min = 120.dp),
         elevation = 4.dp,
         cornerRadius = 20.dp,
         contentPadding = 20.dp
@@ -252,6 +233,31 @@ private fun CalculatorDisplay(
                         contentDescription = calculatingDescription
                     },
                 strokeWidth = 3.dp
+            )
+        }
+
+        IconButton(
+            onClick = {
+                copyValue?.let { value ->
+                    clipboardManager.setText(
+                        AnnotatedString(value)
+                    )
+
+                    Toast.makeText(
+                        context,
+                        copiedMessage,
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+            },
+            enabled = copyValue != null,
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .offset(x = 12.dp, y = (-12).dp)
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_content_copy),
+                contentDescription = copyActionLabel
             )
         }
 
