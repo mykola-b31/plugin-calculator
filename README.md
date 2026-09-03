@@ -26,12 +26,12 @@ Most calculator apps hardcode every operation. This one treats operations as ins
 
 <table>
   <tr>
-    <td align="center"><img src="docs/screenshots/calculator_light.jpg" width="180"/><br/><sub>Light theme</sub></td>
-    <td align="center"><img src="docs/screenshots/calculator_dark.jpg" width="180"/><br/><sub>Dark theme</sub></td>
+    <td align="center"><img src="docs/screenshots/calculator_light.jpg" width="250"/><br/><sub>Light theme</sub></td>
+    <td align="center"><img src="docs/screenshots/calculator_dark.jpg" width="250"/><br/><sub>Dark theme</sub></td>
   </tr>
   <tr>
-    <td align="center"><img src="docs/screenshots/plugin_manager.jpg" width="180"/><br/><sub>Plugin manager</sub></td>
-    <td align="center"><img src="docs/screenshots/plugin_detail.jpg" width="180"/><br/><sub>Plugin detail</sub></td>
+    <td align="center"><img src="docs/screenshots/plugin_manager.jpg" width="250"/><br/><sub>Plugin manager</sub></td>
+    <td align="center"><img src="docs/screenshots/plugin_detail.jpg" width="250"/><br/><sub>Plugin detail</sub></td>
   </tr>
 </table>
 
